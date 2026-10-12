@@ -1,0 +1,19 @@
+# Nuxt / Wrangler outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+.wrangler
+dist
+
+node_modules
+*.log
+.DS_Store
+
+# Local env / Claude personal settings
+.env
+.env.*
+!.env.example
+.dev.vars
+.claude/settings.local.json
