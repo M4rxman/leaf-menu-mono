@@ -1,4 +1,4 @@
-# Leaf Menu (leaf-menu-mono)
+# Chilly Menu (leaf-menu-mono repo)
 
 QR restaurant menus with likes + a small CMS (ChoiceQR-like, no ordering). First client: Casa Strega, Porto.
 
@@ -30,6 +30,21 @@ Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) bind
 - `server/api/` handlers stay thin: parse, call a service, return. Services take ports in the constructor.
 - Abstract only where an implementation changes (D1 vs test SQLite, R2, auth provider) or a rule must be enforced once (CMS `TenantScopedRepository`). Interfaces by default, no DI container, no speculative base classes. Every port implementation must pass the same contract test (`test/menu-reader.contract.test.mjs`).
 - Server `.ts` files use `import type` and explicit `.ts` import paths and no enums/constructor parameter properties, so `node --experimental-strip-types` can run them in tests.
+
+## Languages (plan v3 §7)
+- **Pool** = curated ~40 base codes in `shared/langs.ts` (`POOL`, `isLang`, `canonicalLang`); owners pick per venue (`restaurant_langs`, `default_lang`); DB only checks tag format, the app checks pool membership.
+- **Guest resolution:** `/r/{slug}` -> 302 `/r/{slug}/{lang}` from Accept-Language ∩ enabled, else default. A language that is not enabled or not in the pool -> 302 to the default-language URL. Old slug -> 301. One enabled language = no switch.
+- **Venue content** (dish/category names, descriptions, ...) is owner-entered per language in `*_i18n`, falls back to the default language (`resolveText`). Owners are responsible for translation correctness.
+- **UI chrome** (labels, aria) lives in `i18n/locales/{en,pt,es,de,uk,fr}.json`, used with `$t(...)`; the page sets the locale from the URL language via `setLocale(uiLocale(lang))`. Languages without a file get English chrome. Never hard-code visible text; add the key to all six files (`test/locales.test.mjs` enforces key parity).
+- `<html lang dir>` from the view; `dir="rtl"` for ar, he, fa, ur. Use logical CSS (`ms-/me-/ps-/pe-`), never left/right.
+- Prices: `Intl.NumberFormat`; bare `pt` is mapped to `pt-PT` (a bare `pt` formats as Brazil: "€ 8,00").
+- Landing copy (`app/content/landing.ts`, en/pt) is deliberately outside the locale files: it exists in two languages only, which would break key parity.
+
+## Venues and URLs
+- One Worker, one D1, one R2 bucket for all venues. A venue is a `restaurants` row: adding one needs no deploy or DNS change.
+- Path per venue: `/` landing (`/pt` Portuguese), `/r/{slug}[/{lang}]` menu, `/q/{code}` permanent QR link, `/admin` CMS. No public venue list; the landing links only to the demo.
+- Slug rule (enforce in the CMS create-venue handler + a `CHECK` in a later migration): `^[a-z0-9]+(-[a-z0-9]+)*$`, 3-40 chars, small reserved list (`admin`, `api`). Slug lookup stays host-independent so custom domains can be added later via a `venue_domains` table.
+- R2 keys under `venues/{restaurant_id}/`. Landing copy: `app/content/landing.ts` (en, pt); site name and email: `app/app.config.ts`.
 
 ## Rules (from the plan)
 - Owner's `restaurant_id` comes from the session only; every owner query goes through `scopedDb`.

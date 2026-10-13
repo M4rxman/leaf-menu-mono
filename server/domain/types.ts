@@ -1,5 +1,5 @@
-export const LANGS = ['en', 'pt', 'es', 'de', 'uk', 'fr'] as const
-export type Lang = typeof LANGS[number]
+/** Canonical language tag from the pool in shared/langs.ts ('pt', 'uk', ...). */
+export type Lang = string
 
 /** One text in several languages. A missing key means "not translated". */
 export type Translations = Partial<Record<Lang, string>>
@@ -67,6 +67,7 @@ export interface CategoryView {
 export interface MenuView {
   slug: string
   lang: Lang
+  dir: 'ltr' | 'rtl'
   langs: Lang[]
   name: string
   about: string
@@ -77,5 +78,5 @@ export interface MenuView {
 
 export type MenuResult =
   | { kind: 'ok', menu: MenuView }
-  | { kind: 'redirect', slug: string }
+  | { kind: 'redirect', slug: string, lang?: Lang, permanent: boolean }
   | { kind: 'notfound' }

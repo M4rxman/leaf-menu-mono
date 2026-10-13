@@ -1,3 +1,4 @@
+import { bestLang, canonicalLang, dirOf } from '../../shared/langs.ts'
 import { resolveText } from './i18n.ts'
 import { formatPrice } from './money.ts'
 import type { MenuReader } from './ports.ts'
@@ -12,19 +13,32 @@ export class MenuService {
     this.reader = reader
   }
 
-  async getMenu(slug: string, requestedLang?: string): Promise<MenuResult> {
+  /** /r/{slug}: pick the language from Accept-Language (enabled only), else the venue default. */
+  async enter(slug: string, acceptLanguage: string | null | undefined): Promise<MenuResult> {
     const raw = await this.reader.getMenu(slug)
-    if (!raw) {
-      const current = await this.reader.currentSlugFor(slug)
-      return current ? { kind: 'redirect', slug: current } : { kind: 'notfound' }
-    }
-    return { kind: 'ok', menu: toView(raw, pickLang(raw, requestedLang)) }
+    if (raw) return redirect(raw.slug, bestLang(acceptLanguage, raw.langs, raw.defaultLang), false)
+    return this.renamed(slug, undefined)
+  }
+
+  /** /r/{slug}/{lang}: serve it if enabled, else redirect to the default-language URL. */
+  async getMenu(slug: string, requestedLang: string): Promise<MenuResult> {
+    const raw = await this.reader.getMenu(slug)
+    if (!raw) return this.renamed(slug, requestedLang)
+    const lang = canonicalLang(requestedLang)
+    if (!lang || !raw.langs.includes(lang)) return redirect(raw.slug, raw.defaultLang, false)
+    return { kind: 'ok', menu: toView(raw, lang) }
+  }
+
+  /** An old slug 301s to the current one; the language is kept if it is still a plain tag. */
+  private async renamed(oldSlug: string, langHint: string | null | undefined): Promise<MenuResult> {
+    const current = await this.reader.currentSlugFor(oldSlug)
+    if (!current) return { kind: 'notfound' }
+    return redirect(current, canonicalLang(langHint ?? '') ?? undefined, true)
   }
 }
 
-/** Only languages the owner enabled; anything else falls back to the default. */
-function pickLang(raw: RawMenu, requested?: string): Lang {
-  return raw.langs.find(l => l === requested) ?? raw.defaultLang
+function redirect(slug: string, lang: Lang | undefined, permanent: boolean): MenuResult {
+  return { kind: 'redirect', slug, lang, permanent }
 }
 
 function toView(raw: RawMenu, lang: Lang): MenuView {
@@ -45,6 +59,7 @@ function toView(raw: RawMenu, lang: Lang): MenuView {
   return {
     slug: raw.slug,
     lang,
+    dir: dirOf(lang),
     langs: raw.langs,
     name: text(raw.names),
     about: text(raw.about),

@@ -3,7 +3,7 @@ defineProps<{ categories: { id: number, name: string }[] }>()
 </script>
 
 <template>
-  <nav aria-label="Categories" class="sticky top-0 z-10 overflow-x-auto bg-surface/95 backdrop-blur">
+  <nav :aria-label="$t('guest.categories')" class="sticky top-0 z-10 overflow-x-auto bg-surface/95 backdrop-blur">
     <ul class="flex gap-2 px-4 py-2">
       <li v-for="c in categories" :key="c.id">
         <a

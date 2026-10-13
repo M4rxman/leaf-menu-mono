@@ -1,4 +1,4 @@
-name = "leaf-menu"
+name = "chilly-menu"
 main = ".output/server/index.mjs"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
@@ -6,11 +6,11 @@ assets = { directory = ".output/public", binding = "ASSETS" }
 
 [[d1_databases]]
 binding = "DB"
-database_name = "leaf-menu"
-# Placeholder: replace with the id from `npx wrangler d1 create leaf-menu --location weur`
+database_name = "chilly-menu"
+# Placeholder: replace with the id from `npx wrangler d1 create chilly-menu --location weur`
 database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "PHOTOS"
-bucket_name = "leaf-menu-photos"
+bucket_name = "chilly-photos"

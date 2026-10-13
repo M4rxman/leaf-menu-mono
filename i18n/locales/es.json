@@ -1,0 +1,8 @@
+{
+  "guest": {
+    "language": "Idioma",
+    "categories": "Categorías",
+    "likes": "{n} me gusta | {n} me gusta",
+    "soldOut": "Agotado"
+  }
+}

@@ -1,11 +1,7 @@
-import type { Lang } from './types.ts'
+// A bare tag picks that language's default region ('pt' = Brazil: "€ 8,00"). Our first venues are in Portugal.
+const FORMAT_LOCALE: Record<string, string> = { pt: 'pt-PT' }
 
-// Adding a language = one line here (plus its UI strings).
-const LOCALES: Record<Lang, string> = {
-  en: 'en-GB', pt: 'pt-PT', es: 'es-ES', de: 'de-DE', uk: 'uk-UA', fr: 'fr-FR'
-}
-
-/** 800 cents, EUR, pt -> "8,00 €". */
-export function formatPrice(cents: number, currency: string, lang: Lang): string {
-  return new Intl.NumberFormat(LOCALES[lang], { style: 'currency', currency }).format(cents / 100)
+/** 800 cents, EUR, 'pt' -> "8,00 €". */
+export function formatPrice(cents: number, currency: string, lang: string): string {
+  return new Intl.NumberFormat(FORMAT_LOCALE[lang] ?? lang, { style: 'currency', currency }).format(cents / 100)
 }

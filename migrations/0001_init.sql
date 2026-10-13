@@ -1,11 +1,11 @@
 -- Schema v1 (qr-menu-plan.md §6). Language-neutral fields on main tables, text in *_i18n.
--- Launch languages: en, pt, es, de, uk, fr.
+-- Languages: canonical BCP 47 tags, validated against the pool (shared/langs.ts) by the app.
 
 CREATE TABLE restaurants (
   id           INTEGER PRIMARY KEY,
   slug         TEXT NOT NULL UNIQUE,
   qr_code      TEXT NOT NULL UNIQUE, -- printed on paper: never editable
-  default_lang TEXT NOT NULL CHECK (default_lang IN ('en','pt','es','de','uk','fr')),
+  default_lang TEXT NOT NULL CHECK (length(default_lang) BETWEEN 2 AND 12 AND default_lang NOT GLOB '*[^A-Za-z0-9-]*'),
   currency     TEXT NOT NULL DEFAULT 'EUR',
   info_json    TEXT NOT NULL DEFAULT '{}', -- address, phone, socials, map link
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
@@ -15,14 +15,14 @@ CREATE TABLE restaurants (
 
 CREATE TABLE restaurant_langs (
   restaurant_id INTEGER NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
-  lang          TEXT NOT NULL CHECK (lang IN ('en','pt','es','de','uk','fr')),
+  lang          TEXT NOT NULL CHECK (length(lang) BETWEEN 2 AND 12 AND lang NOT GLOB '*[^A-Za-z0-9-]*'),
   position      INTEGER NOT NULL,
   PRIMARY KEY (restaurant_id, lang)
 );
 
 CREATE TABLE restaurant_i18n (
   restaurant_id INTEGER NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
-  lang          TEXT NOT NULL CHECK (lang IN ('en','pt','es','de','uk','fr')),
+  lang          TEXT NOT NULL CHECK (length(lang) BETWEEN 2 AND 12 AND lang NOT GLOB '*[^A-Za-z0-9-]*'),
   name          TEXT NOT NULL,
   about         TEXT,
   hours_text    TEXT,
@@ -66,7 +66,7 @@ CREATE TABLE categories (
 
 CREATE TABLE category_i18n (
   category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-  lang        TEXT NOT NULL CHECK (lang IN ('en','pt','es','de','uk','fr')),
+  lang        TEXT NOT NULL CHECK (length(lang) BETWEEN 2 AND 12 AND lang NOT GLOB '*[^A-Za-z0-9-]*'),
   name        TEXT NOT NULL,
   PRIMARY KEY (category_id, lang)
 );
@@ -92,7 +92,7 @@ CREATE INDEX dishes_menu ON dishes(restaurant_id, category_id, position);
 
 CREATE TABLE dish_i18n (
   dish_id     INTEGER NOT NULL REFERENCES dishes(id) ON DELETE CASCADE,
-  lang        TEXT NOT NULL CHECK (lang IN ('en','pt','es','de','uk','fr')),
+  lang        TEXT NOT NULL CHECK (length(lang) BETWEEN 2 AND 12 AND lang NOT GLOB '*[^A-Za-z0-9-]*'),
   name        TEXT NOT NULL,
   description TEXT,
   photo_alt   TEXT,

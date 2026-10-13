@@ -20,7 +20,7 @@ test('demo menu: 7 categories, 9 dishes, pt default', async () => {
 })
 
 test('portuguese view: formatted prices, featured Bufalina', async () => {
-  const { menu } = await service.getMenu('demo')
+  const { menu } = await service.getMenu('demo', 'pt')
   const dishes = menu.categories.flatMap(c => c.dishes)
   assert.match(dishes.find(d => d.name === 'Aperol Spritz').price, /^5,00\s€$/)
   assert.equal(dishes.find(d => d.isFeatured).name, 'Bufalina Panizza')
@@ -35,5 +35,5 @@ test('english view translates Bufalina only, the rest falls back to pt', async (
 
 test('renamed slug redirects', async () => {
   sqlite.exec("INSERT INTO slug_history VALUES ('casa-old', 1)")
-  assert.deepEqual(await service.getMenu('casa-old'), { kind: 'redirect', slug: 'demo' })
+  assert.deepEqual(await service.getMenu('casa-old', 'pt'), { kind: 'redirect', slug: 'demo', lang: 'pt', permanent: true })
 })
