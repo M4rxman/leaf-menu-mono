@@ -49,9 +49,11 @@ test('role / restaurant_id check', () => {
   assert.throws(() => d.exec("INSERT INTO users (email, password_hash, role) VALUES ('ow@x.pt', 'x', 'owner')"), /CHECK/)
 })
 
-test('unknown language rejected', () => {
+test('malformed language tag rejected, any well-formed tag accepted by the DB', () => {
   const d = db()
-  assert.throws(() => d.exec("INSERT INTO restaurant_langs VALUES (1, 'it', 30)"), /CHECK/)
+  assert.throws(() => d.exec("INSERT INTO restaurant_langs VALUES (1, 'p', 30)"), /CHECK/)
+  assert.throws(() => d.exec("INSERT INTO restaurant_langs VALUES (1, 'pt_BR', 30)"), /CHECK/)
+  d.exec("INSERT INTO restaurant_langs VALUES (1, 'it', 30)") // pool membership is the app's job (shared/langs.ts)
 })
 
 test('deleting a restaurant cascades', () => {

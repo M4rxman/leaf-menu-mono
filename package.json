@@ -1,31 +1,39 @@
 {
-    "name":  "leaf-menu",
-    "type":  "module",
-    "private":  true,
-    "scripts":  {
-                    "dev":  "nuxt dev",
-                    "build":  "nuxt build",
-                    "preview":  "nuxt build \u0026\u0026 wrangler dev",
-                    "db:migrate":  "wrangler d1 migrations apply DB --local",
-                    "db:seed":  "wrangler d1 execute DB --local --file seed.sql",
-                    "test":  "node --experimental-sqlite --test \"test/*.test.mjs\"",
-                    "postinstall":  "nuxt prepare",
-                    "prepare":  "husky",
-                    "lint":  "eslint ."
-                },
-    "dependencies":  {
-                         "nuxt":  "^4.6.1",
-                         "vue":  "^3.5.43",
-                         "vue-router":  "^5.4.0"
-                     },
-    "devDependencies":  {
-                            "@nuxt/eslint":  "^1.17.0",
-                            "eslint":  "^10.12.0",
-                            "husky":  "^9.1.7",
-                            "lint-staged":  "^16.4.0",
-                            "wrangler":  "^4.149.0"
-                        },
-    "lint-staged":  {
-                        "*.{js,mjs,ts,vue}":  "eslint --fix"
-                    }
+    "name": "chilly-menu",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "dev": "nuxt dev",
+        "build": "nuxt build",
+        "preview": "nuxt build && wrangler dev",
+        "db:migrate": "wrangler d1 migrations apply DB --local",
+        "db:seed": "wrangler d1 execute DB --local --file seed.sql",
+        "test": "node --experimental-sqlite --experimental-strip-types --test \"test/*.test.mjs\"",
+        "postinstall": "nuxt prepare",
+        "prepare": "husky",
+        "lint": "eslint .",
+        "typecheck": "nuxt typecheck"
+    },
+    "dependencies": {
+        "@iconify-json/lucide": "^1.2.143",
+        "@nuxt/icon": "^2.5.1",
+        "@nuxt/ui": "^4.11.3",
+        "@nuxtjs/i18n": "^10.6.0",
+        "nitro-cloudflare-dev": "^0.2.2",
+        "nuxt": "^4.6.1",
+        "vue": "^3.5.43",
+        "vue-router": "^5.4.0"
+    },
+    "devDependencies": {
+        "@nuxt/eslint": "^1.17.0",
+        "eslint": "^10.12.0",
+        "husky": "^9.1.7",
+        "lint-staged": "^16.4.0",
+        "typescript": "^6.0.3",
+        "vue-tsc": "^3.3.13",
+        "wrangler": "^4.149.0"
+    },
+    "lint-staged": {
+        "*.{js,mjs,ts,vue}": "eslint --fix"
+    }
 }

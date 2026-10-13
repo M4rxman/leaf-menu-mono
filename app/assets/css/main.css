@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* Venue theme: change these, not the components. Casa Strega is the first theme.
+   Placeholder values until the reference screenshots are turned into real tokens. */
+:root {
+  --brand: #b3261e;
+  --surface: #ffffff;
+  --text: #1c1b1a;
+  --radius: 0.75rem;
+}
+
+@theme static {
+  --color-brand: var(--brand);
+  --color-surface: var(--surface);
+  --color-ink: var(--text);
+  --radius-card: var(--radius);
+}

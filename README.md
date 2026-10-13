@@ -1,6 +1,6 @@
-# leaf-menu-mono
+# chilly-menu (repo: leaf-menu-mono)
 
-Leaf Menu: QR restaurant menus with likes, plus a small CMS. Nuxt on Cloudflare Workers (D1 + R2). The plan is in [`qr-menu-plan.md`](qr-menu-plan.md).
+Chilly Menu: QR restaurant menus with likes, plus a small CMS. Nuxt on Cloudflare Workers (D1 + R2). The plan is in [`qr-menu-plan.md`](qr-menu-plan.md).
 
 ## Setup
 
@@ -48,5 +48,5 @@ Before launch: restore one backup into staging (plan §10).
 
 ```sh
 npx wrangler login
-npx wrangler d1 create leaf-menu --location weur   # paste the id into wrangler.toml
+npx wrangler d1 create chilly-menu --location weur   # paste the id into wrangler.toml
 ```
