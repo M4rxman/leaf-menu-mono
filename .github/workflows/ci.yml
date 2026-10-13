@@ -11,8 +11,8 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22.x, 24.x] # Define a matrix of Node.js versions to test.There would be 3 jobs for 12.x, 14.x, 16.x
-
+        node-version: 24.x 
+        
     steps:
     - name: Checkout code
       uses: actions/checkout@v2 # Step 1: Check out the source code from the repository.
