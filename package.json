@@ -11,11 +11,11 @@
         "test": "node --experimental-sqlite --experimental-strip-types --test \"test/*.test.mjs\"",
         "postinstall": "nuxt prepare",
         "prepare": "husky",
-        "lint": "eslint ."
+        "lint": "eslint .",
+        "typecheck": "nuxt typecheck"
     },
     "dependencies": {
         "@iconify-json/lucide": "^1.2.143",
-        "@nuxt/fonts": "^1.0.1",
         "@nuxt/icon": "^2.5.1",
         "@nuxt/ui": "^4.11.3",
         "@nuxtjs/i18n": "^10.6.0",
@@ -29,6 +29,8 @@
         "eslint": "^10.12.0",
         "husky": "^9.1.7",
         "lint-staged": "^16.4.0",
+        "typescript": "^6.0.3",
+        "vue-tsc": "^3.3.13",
         "wrangler": "^4.149.0"
     },
     "lint-staged": {

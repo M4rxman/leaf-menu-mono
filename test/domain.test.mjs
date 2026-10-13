@@ -37,9 +37,19 @@ test('MenuService drops hidden and deleted dishes and orders by position', async
   assert.deepEqual(r.menu.categories[0].dishes.map(d => d.id), [1, 2])
 })
 
-test('enabled language is served; canonical case is accepted', async () => {
+test('enabled language is served; a non-canonical tag 301s to the canonical URL', async () => {
   assert.equal((await service(raw()).getMenu('x', 'uk')).menu.lang, 'uk')
-  assert.equal((await service(raw()).getMenu('x', 'PT')).menu.lang, 'pt')
+  assert.deepEqual(await service(raw()).getMenu('x', 'PT'), { kind: 'redirect', slug: 'x', lang: 'pt', permanent: true })
+})
+
+test('the default language is always servable (no redirect loop when restaurant_langs is empty or lacks it)', async () => {
+  for (const langs of [[], ['en']]) {
+    const r = await service(raw({ langs })).getMenu('x', 'pt')
+    assert.equal(r.kind, 'ok')
+    assert.ok(r.menu.langs.includes('pt'))
+  }
+  const odd = await service(raw({ langs: [], defaultLang: 'xx' })).getMenu('x', 'xx') // default outside the pool
+  assert.equal(odd.kind, 'ok')
 })
 
 test('a language that is not enabled (or not in the pool) redirects to the default-language URL', async () => {

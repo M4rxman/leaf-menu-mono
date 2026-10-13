@@ -9,14 +9,15 @@ export const POOL = [
 
 /** Languages we ship UI chrome for (i18n/locales/*.json). Anything else shows chrome in English. */
 export const UI_LOCALES = ['en', 'pt', 'es', 'de', 'uk', 'fr'] as const
+type UiLocale = typeof UI_LOCALES[number]
 
 const RTL = new Set(['ar', 'he', 'fa', 'ur'])
 
 /** Canonical tag if it is in the pool ('PT' -> 'pt'), else null. */
 export function canonicalLang(tag: string): string | null {
   try {
-    const [canonical] = Intl.getCanonicalLocales(tag)
-    return (POOL as readonly string[]).includes(canonical) ? canonical : null
+    const canonical = Intl.getCanonicalLocales(tag)[0]
+    return canonical && (POOL as readonly string[]).includes(canonical) ? canonical : null
   } catch {
     return null
   }
@@ -26,8 +27,8 @@ export const isLang = (tag: string): boolean => canonicalLang(tag) !== null
 
 export const dirOf = (lang: string): 'ltr' | 'rtl' => (RTL.has(lang) ? 'rtl' : 'ltr')
 
-export const uiLocale = (lang: string): string =>
-  (UI_LOCALES as readonly string[]).includes(lang) ? lang : 'en'
+export const uiLocale = (lang: string): UiLocale =>
+  UI_LOCALES.find(l => l === lang) ?? 'en'
 
 /** Name of a language in that language: "português" -> "Português". */
 export function languageName(lang: string): string {
@@ -40,8 +41,8 @@ export function bestLang(header: string | null | undefined, enabled: string[], f
   const wanted = (header ?? '')
     .split(',')
     .map((part) => {
-      const [tag, q] = part.trim().split(';q=')
-      return { base: tag.split('-')[0].toLowerCase(), q: q === undefined ? 1 : Number(q) }
+      const [tag = '', q] = part.trim().split(';q=')
+      return { base: (tag.split('-')[0] ?? '').toLowerCase(), q: q === undefined ? 1 : Number(q) }
     })
     .filter(x => x.base && x.base !== '*' && x.q > 0)
     .sort((a, b) => b.q - a.q)

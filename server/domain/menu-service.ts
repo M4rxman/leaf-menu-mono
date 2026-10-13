@@ -24,8 +24,10 @@ export class MenuService {
   async getMenu(slug: string, requestedLang: string): Promise<MenuResult> {
     const raw = await this.reader.getMenu(slug)
     if (!raw) return this.renamed(slug, requestedLang)
-    const lang = canonicalLang(requestedLang)
-    if (!lang || !raw.langs.includes(lang)) return redirect(raw.slug, raw.defaultLang, false)
+    // The default language is always servable, even if it is not (yet) in restaurant_langs: otherwise the redirect below loops.
+    const lang = requestedLang === raw.defaultLang ? raw.defaultLang : canonicalLang(requestedLang)
+    if (!lang || !servable(raw).includes(lang)) return redirect(raw.slug, raw.defaultLang, false)
+    if (lang !== requestedLang) return redirect(raw.slug, lang, true) // 'PT' -> 'pt'
     return { kind: 'ok', menu: toView(raw, lang) }
   }
 
@@ -36,6 +38,8 @@ export class MenuService {
     return redirect(current, canonicalLang(langHint ?? '') ?? undefined, true)
   }
 }
+
+const servable = (raw: RawMenu): Lang[] => (raw.langs.includes(raw.defaultLang) ? raw.langs : [raw.defaultLang, ...raw.langs])
 
 function redirect(slug: string, lang: Lang | undefined, permanent: boolean): MenuResult {
   return { kind: 'redirect', slug, lang, permanent }
@@ -60,7 +64,7 @@ function toView(raw: RawMenu, lang: Lang): MenuView {
     slug: raw.slug,
     lang,
     dir: dirOf(lang),
-    langs: raw.langs,
+    langs: servable(raw),
     name: text(raw.names),
     about: text(raw.about),
     hoursText: text(raw.hours),

@@ -1,7 +1,7 @@
 import type { Db } from '../domain/ports.ts'
 
 // The slice of D1Database we call; avoids pulling in the Workers types package.
-interface D1Like {
+export interface D1Like {
   prepare(sql: string): {
     bind(...params: unknown[]): {
       all(): Promise<{ results: unknown[] }>

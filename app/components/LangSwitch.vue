@@ -7,10 +7,10 @@ defineProps<{ slug: string, langs: string[], current: string }>()
 
 <template>
   <nav v-if="langs.length > 1" :aria-label="$t('guest.language')" class="flex flex-wrap gap-1">
-    <NuxtLink
+    <a
       v-for="l in langs"
       :key="l"
-      :to="menuPath(slug, l)"
+      :href="menuPath(slug, l)"
       :lang="l"
       :hreflang="l"
       :aria-current="l === current ? 'true' : undefined"
@@ -18,6 +18,6 @@ defineProps<{ slug: string, langs: string[], current: string }>()
       :class="l === current ? 'bg-brand text-white' : 'text-ink/70 hover:bg-ink/5'"
     >
       {{ languageName(l) }}
-    </NuxtLink>
+    </a>
   </nav>
 </template>
