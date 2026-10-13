@@ -5,29 +5,23 @@ on:
     branches: [main]
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: 24
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2 # Step 1: Check out the source code from the repository.
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm' # Step 2: Use npm caching for faster dependency installs.
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
 
-    - name: Install Node.js dependencies
-      run: npm ci # Step 3: Perform a clean install of Node.js dependencies.
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run Lint
-      run: npm run lint
+      - name: Run lint
+        run: npm run lint
 
-    - name: Run tests
-      run: npm test # Step 4: Run tests using the specified Node.js version.
+      - name: Run tests
+        run: npm test
