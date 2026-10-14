@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveText } from '../server/domain/i18n.ts'
+import { fallbackLang, resolveText } from '../server/domain/i18n.ts'
 import { formatPrice } from '../server/domain/money.ts'
 import { MenuService } from '../server/domain/menu-service.ts'
 
@@ -9,6 +9,13 @@ test('resolveText falls back to the default language, then to empty', () => {
   assert.equal(resolveText({ pt: 'Olá' }, 'en', 'pt'), 'Olá')
   assert.equal(resolveText({ pt: '  ' }, 'en', 'pt'), '')
   assert.equal(resolveText({}, 'en', 'pt'), '')
+})
+
+test('fallbackLang marks only text that fell back to the default language', () => {
+  assert.equal(fallbackLang({ pt: 'Olá' }, 'en', 'pt'), 'pt')
+  assert.equal(fallbackLang({ pt: 'Olá', en: 'Hi' }, 'en', 'pt'), undefined)
+  assert.equal(fallbackLang({ pt: 'Olá' }, 'pt', 'pt'), undefined)
+  assert.equal(fallbackLang({}, 'en', 'pt'), undefined)
 })
 
 test('formatPrice follows the language; pt means Portugal', () => {
@@ -40,6 +47,12 @@ test('MenuService drops hidden and deleted dishes and orders by position', async
 test('enabled language is served; a non-canonical tag 301s to the canonical URL', async () => {
   assert.equal((await service(raw()).getMenu('x', 'uk')).menu.lang, 'uk')
   assert.deepEqual(await service(raw()).getMenu('x', 'PT'), { kind: 'redirect', slug: 'x', lang: 'pt', permanent: true })
+})
+
+test('the view marks default-language fallback text with its language', async () => {
+  const m = (await service(raw()).getMenu('x', 'en')).menu
+  assert.equal(m.categories[0].dishes[0].nameLang, 'pt')
+  assert.equal((await service(raw()).getMenu('x', 'pt')).menu.categories[0].dishes[0].nameLang, undefined)
 })
 
 test('the default language is always servable (no redirect loop when restaurant_langs is empty or lacks it)', async () => {

@@ -14,10 +14,10 @@ defineProps<{ dish: DishView }>()
       <Icon name="i-lucide-utensils" class="size-6" />
     </div>
     <div class="min-w-0 flex-1">
-      <h3 class="font-semibold">
+      <h3 class="font-semibold" :lang="dish.nameLang">
         {{ dish.name }}
       </h3>
-      <p v-if="dish.description" class="text-sm text-ink/70">
+      <p v-if="dish.description" class="text-sm text-ink/70" :lang="dish.descriptionLang">
         {{ dish.description }}
       </p>
       <p class="mt-1 font-medium">

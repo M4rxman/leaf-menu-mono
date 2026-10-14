@@ -48,7 +48,9 @@ export interface RawMenu {
 export interface DishView {
   id: number
   name: string
+  nameLang?: Lang // set only when the text fell back to the default language
   description: string
+  descriptionLang?: Lang
   photoKey: string | null
   photoAlt: string
   price: string
@@ -61,6 +63,7 @@ export interface DishView {
 export interface CategoryView {
   id: number
   name: string
+  nameLang?: Lang
   dishes: DishView[]
 }
 
@@ -70,7 +73,9 @@ export interface MenuView {
   dir: 'ltr' | 'rtl'
   langs: Lang[]
   name: string
+  nameLang?: Lang
   about: string
+  aboutLang?: Lang
   hoursText: string
   info: Record<string, unknown>
   categories: CategoryView[]

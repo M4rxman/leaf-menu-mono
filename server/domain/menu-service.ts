@@ -1,5 +1,5 @@
 import { bestLang, canonicalLang, dirOf } from '../../shared/langs.ts'
-import { resolveText } from './i18n.ts'
+import { fallbackLang, resolveText } from './i18n.ts'
 import { formatPrice } from './money.ts'
 import type { MenuReader } from './ports.ts'
 import type { Lang, MenuResult, RawDish, RawMenu, DishView, MenuView } from './types.ts'
@@ -47,10 +47,13 @@ function redirect(slug: string, lang: Lang | undefined, permanent: boolean): Men
 
 function toView(raw: RawMenu, lang: Lang): MenuView {
   const text = (t: Parameters<typeof resolveText>[0]) => resolveText(t, lang, raw.defaultLang)
+  const mark = (t: Parameters<typeof resolveText>[0]) => fallbackLang(t, lang, raw.defaultLang)
   const dishView = (d: RawDish): DishView => ({
     id: d.id,
     name: text(d.names),
+    nameLang: mark(d.names),
     description: text(d.descriptions),
+    descriptionLang: mark(d.descriptions),
     photoKey: d.photoKey,
     photoAlt: text(d.photoAlts),
     price: formatPrice(d.priceCents, raw.currency, lang),
@@ -66,7 +69,9 @@ function toView(raw: RawMenu, lang: Lang): MenuView {
     dir: dirOf(lang),
     langs: servable(raw),
     name: text(raw.names),
+    nameLang: mark(raw.names),
     about: text(raw.about),
+    aboutLang: mark(raw.about),
     hoursText: text(raw.hours),
     info: raw.info,
     categories: raw.categories
@@ -75,6 +80,7 @@ function toView(raw: RawMenu, lang: Lang): MenuView {
       .map(c => ({
         id: c.id,
         name: text(c.names),
+        nameLang: mark(c.names),
         dishes: c.dishes.filter(d => d.isVisible && !d.deleted).sort(byPosition).map(dishView)
       }))
   }
