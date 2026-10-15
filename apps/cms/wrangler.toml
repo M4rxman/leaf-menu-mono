@@ -1,0 +1,17 @@
+name = "chilly-cms"
+main = ".output/server/index.mjs"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+assets = { directory = ".output/public", binding = "ASSETS" }
+
+# Same database and bucket as apps/web (one D1, one R2 for all venues).
+[[d1_databases]]
+binding = "DB"
+database_name = "chilly-menu"
+# Placeholder: use the same id as apps/web/wrangler.toml
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "../../packages/shared/migrations"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "chilly-photos"

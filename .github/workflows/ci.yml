@@ -24,7 +24,7 @@ jobs:
         run: npm run lint
 
       - name: Typecheck
-        run: npx nuxt typecheck
+        run: npm run typecheck
 
       - name: Run tests
         run: npm test

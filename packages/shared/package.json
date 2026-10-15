@@ -1,0 +1,21 @@
+{
+    "name": "@chilly/shared",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./langs": "./src/langs.ts",
+        "./paths": "./src/paths.ts",
+        "./plural": "./src/plural.ts",
+        "./domain/*": "./src/domain/*.ts",
+        "./infra/*": "./src/infra/*.ts"
+    },
+    "scripts": {
+        "test": "node --experimental-sqlite --experimental-strip-types --test \"test/*.test.mjs\"",
+        "lint": "eslint ."
+    },
+    "devDependencies": {
+        "@nuxt/eslint-config": "*",
+        "eslint": "^10.12.0"
+    }
+}
