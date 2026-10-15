@@ -10,6 +10,8 @@ Needs Node ≥ 22.22.3 (or ≥ 24.15) and npm.
 npm install        # also installs the git pre-commit hook (husky)
 ```
 
+Copy `apps/web/.dev.vars.example` to `apps/web/.dev.vars` (git-ignored); `DEVICE_SECRET` signs the guest like cookie. In production: `wrangler secret put DEVICE_SECRET`.
+
 ## Layout
 
 npm-workspaces monorepo: `apps/web` (guest menu Worker), `apps/cms` (owner CMS Worker, served under `/admin`), `packages/shared` (domain, infra, languages, migrations, seed). All scripts below run from the repo root.
@@ -54,3 +56,8 @@ Before launch: restore one backup into staging (plan §10).
 npx wrangler login
 npx wrangler d1 create chilly-menu --location weur   # paste the id into wrangler.toml
 ```
+
+Likes (M3), after `preview`:
+- Tap ♡ on `/r/demo/pt`: count +1, `chilly_device` cookie set only now; tap again: back. `/r/demo/pt/favorites` lists exactly this browser's hearts.
+- With JS off, the ♡ form posts to `/api/likes/{id}` and returns to `#dish-{id}`.
+- 11 like requests in a minute from one IP for one dish: the 11th gets 429.

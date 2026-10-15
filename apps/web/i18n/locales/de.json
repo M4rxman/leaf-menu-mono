@@ -3,6 +3,10 @@
     "language": "Sprache",
     "categories": "Kategorien",
     "likes": "{n} Like | {n} Likes",
-    "soldOut": "Ausverkauft"
+    "soldOut": "Ausverkauft",
+    "like": "{name} gefällt mir",
+    "favorites": "Favoriten",
+    "noFavorites": "Noch keine Favoriten. Tippe auf das Herz bei einem Gericht, um es hier zu speichern.",
+    "backToMenu": "Zurück zur Speisekarte"
   }
 }

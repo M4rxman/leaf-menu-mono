@@ -85,3 +85,12 @@ function toView(raw: RawMenu, lang: Lang): MenuView {
       }))
   }
 }
+
+/** Favorites: the same menu keeping only the given dishes (and categories that still have one). */
+export function onlyDishes(menu: MenuView, ids: number[]): MenuView {
+  const keep = new Set(ids)
+  const categories = menu.categories
+    .map(c => ({ ...c, dishes: c.dishes.filter(d => keep.has(d.id)) }))
+    .filter(c => c.dishes.length)
+  return { ...menu, categories }
+}

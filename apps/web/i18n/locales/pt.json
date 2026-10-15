@@ -3,6 +3,10 @@
     "language": "Idioma",
     "categories": "Categorias",
     "likes": "{n} gosto | {n} gostos",
-    "soldOut": "Esgotado"
+    "soldOut": "Esgotado",
+    "like": "Gostar de {name}",
+    "favorites": "Favoritos",
+    "noFavorites": "Ainda sem favoritos. Toque no coração de um prato para o guardar aqui.",
+    "backToMenu": "Voltar à ementa"
   }
 }
