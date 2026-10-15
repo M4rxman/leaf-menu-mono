@@ -9,7 +9,7 @@ QR restaurant menus with likes + a small CMS (ChoiceQR-like, no ordering). First
 - `pdfs/CASA STREGA — WEBSITE WIREFRAME {DESKTOP,MOBILE}.pdf` — wireframes (mobile first)
 
 ## Stack
-Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) binding `DB`, R2 binding `PHOTOS`. Config in `wrangler.toml`. Requires Node ≥ 22.22.3 or ≥ 24.15.
+Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) binding `DB`, R2 binding `PHOTOS`. Config in each app's `wrangler.toml` (`apps/web`, `apps/cms`). Requires Node ≥ 22.22.3 or ≥ 24.15.
 
 ## Monorepo (npm workspaces)
 - `apps/web` (`@chilly/web`) — public Worker: landing + guest menu (`/`, `/r/*`, `/q/*`).

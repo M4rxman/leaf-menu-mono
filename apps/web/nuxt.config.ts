@@ -1,4 +1,4 @@
-﻿import { UI_LOCALES } from '@chilly/shared/langs'
+import { UI_LOCALES } from '@chilly/shared/langs'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
