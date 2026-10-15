@@ -30,3 +30,29 @@ for (const lang of UI_LOCALES) {
     }
   })
 }
+
+// Keys used in templates/scripts vs keys defined: catches typos (shows the raw key to guests) and dead strings.
+function sourceFiles(dirUrl) {
+  return readdirSync(dirUrl, { withFileTypes: true }).flatMap((e) => {
+    const child = new URL(e.name + (e.isDirectory() ? '/' : ''), dirUrl)
+    return e.isDirectory() ? sourceFiles(child) : /\.(vue|ts)$/.test(e.name) ? [child] : []
+  })
+}
+const usedKeys = new Set(
+  sourceFiles(new URL('../app/', import.meta.url))
+    .flatMap(f => [...readFileSync(f, 'utf8').matchAll(/\$?\bt\(\s*['"`]([\w.]+)['"`]/g)].map(m => m[1]))
+)
+
+test('every $t() key used in app/ exists in en.json', () => {
+  assert.ok(usedKeys.size > 5, 'found the keys in use')
+  for (const key of usedKeys) assert.ok(key in en, `${key} is used but not defined`)
+})
+
+test('every key in en.json is used somewhere in app/ (no dead strings for translators)', () => {
+  for (const key of Object.keys(en)) assert.ok(usedKeys.has(key), `${key} is defined but never used`)
+})
+
+test('parameterised strings: the name of every {placeholder} is one the code passes', () => {
+  assert.equal(placeholders(en['guest.like']), 'name')
+  assert.equal(placeholders(en['guest.likes']), '') // count-neutral label: the number is outside the string
+})

@@ -14,7 +14,8 @@ export async function ensureDevice(event: H3Event): Promise<string> {
   if (existing) return existing
   const id = newDeviceId()
   setCookie(event, COOKIE, await signDevice(id, deviceSecret(event)), {
-    httpOnly: true, secure: true, sameSite: 'lax', maxAge: 31536000, path: '/'
+    // Secure only over HTTPS: browsers drop a Secure cookie on http://<lan-ip> (phone testing). Production is always HTTPS.
+    httpOnly: true, secure: siteUrl(event).protocol === 'https:', sameSite: 'lax', maxAge: 31536000, path: '/'
   })
   return id
 }
