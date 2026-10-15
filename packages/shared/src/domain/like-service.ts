@@ -22,6 +22,11 @@ export class LikeService {
     return { slug: dish.slug, dishId, liked, count: await this.store.setLiked(dishId, deviceId, liked) }
   }
 
+  /** Menu slug of a likeable dish (for redirects after a failed form post). */
+  async slugOf(dishId: number): Promise<string | null> {
+    return (await this.store.findLikeable(dishId))?.slug ?? null
+  }
+
   /** Counts for every dish of the venue plus the ones this device liked (for the page script). */
   async venueLikes(slug: string, deviceId: string | null) {
     const [counts, liked] = await Promise.all([

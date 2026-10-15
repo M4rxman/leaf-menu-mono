@@ -20,13 +20,20 @@
     .catch(() => {})
 
   for (const form of forms) {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault()
       const pressed = form.querySelector('button').getAttribute('aria-pressed') === 'true'
-      fetch(form.action, { method: pressed ? 'DELETE' : 'PUT', credentials: 'same-origin' })
-        .then(r => (r.ok ? r.json() : Promise.reject(r)))
-        .then(d => paint(form, d.liked, d.count))
-        .catch(() => form.submit()) // let the server answer (429 page, etc.)
+      let res
+      try {
+        res = await fetch(form.action, { method: pressed ? 'DELETE' : 'PUT', credentials: 'same-origin' })
+      } catch {
+        return form.submit() // network error: let the browser try the form post
+      }
+      // 429 / 404: keep the current state and the scroll position.
+      if (res.ok) {
+        const d = await res.json()
+        paint(form, d.liked, d.count)
+      }
     })
   }
 })()

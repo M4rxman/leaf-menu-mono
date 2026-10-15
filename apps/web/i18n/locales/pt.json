@@ -2,7 +2,7 @@
   "guest": {
     "language": "Idioma",
     "categories": "Categorias",
-    "likes": "{n} gosto | {n} gostos",
+    "likes": "Gostos",
     "soldOut": "Esgotado",
     "like": "Gostar de {name}",
     "favorites": "Favoritos",

@@ -33,6 +33,8 @@ test('hidden, deleted and unknown dishes cannot be liked; sold-out can', async (
   assert.equal(await likes.set(1, 'dev-a', true), null)
   assert.equal(await likes.set(2, 'dev-a', true), null)
   assert.equal(await likes.set(9999, 'dev-a', true), null)
+  assert.equal(await likes.slugOf(3), 'demo')
+  assert.equal(await likes.slugOf(1), null)
   assert.equal((await likes.set(3, 'dev-a', true)).liked, true)
 })
 
