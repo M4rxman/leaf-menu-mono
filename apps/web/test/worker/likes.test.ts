@@ -3,18 +3,23 @@ import { env, exports } from 'cloudflare:workers'
 import { verifyDevice } from '@chilly/shared/domain/device'
 import { describe, expect, test } from 'vitest'
 
-const ORIGIN = 'http://example.com'
+const ORIGIN = 'https://example.com' // production is always HTTPS
 let ipSeq = 0
-/** Each test gets its own client IP, so the rate-limit budget of one test never leaks into another. */
-const newIp = () => `203.0.113.${++ipSeq}`
+const runId = 1 + Math.floor(Math.random() * 250)
+/**
+ * Each test gets its own client IP, so the rate-limit budget of one test never leaks into another.
+ * The prefix is random per run, so a quick re-run (watch mode) inside the 60 s window doesn't reuse an exhausted IP.
+ */
+const newIp = () => `10.${runId}.${Math.floor(ipSeq / 250)}.${(ipSeq++ % 250) + 1}`
 
-interface Opts { method?: string, origin?: string | null, cookie?: string | null, ip?: string, body?: Record<string, string>, headers?: Record<string, string> }
+interface Opts { method?: string, origin?: string | null, cookie?: string | null, ip?: string, body?: Record<string, string>, headers?: Record<string, string>, base?: string }
 function call(path: string, o: Opts = {}) {
+  const base = o.base ?? ORIGIN
   const headers: Record<string, string> = { 'cf-connecting-ip': o.ip ?? newIp(), ...o.headers }
-  if (o.origin !== null && (o.origin !== undefined || (o.method ?? 'GET') !== 'GET')) headers.origin = o.origin ?? ORIGIN
+  if (o.origin !== null && (o.origin !== undefined || (o.method ?? 'GET') !== 'GET')) headers.origin = o.origin ?? base
   if (o.cookie) headers.cookie = o.cookie
   if (o.body) headers['content-type'] = 'application/x-www-form-urlencoded'
-  return exports.default.fetch(ORIGIN + path, {
+  return exports.default.fetch(base + path, {
     method: o.method ?? 'GET', headers, redirect: 'manual', body: o.body ? new URLSearchParams(o.body).toString() : undefined
   })
 }
@@ -39,6 +44,14 @@ describe('PUT /api/likes/{id}', () => {
     const id = decodeURIComponent(cookieOf(res)!.split('=')[1])
     expect(await verifyDevice(id, 'test-device-secret')).toMatch(/^[0-9a-f-]{36}$/)
     expect(await likesIn(7)).toBe(1)
+  })
+
+  test('over plain HTTP (phone testing on the LAN) the cookie has no Secure flag, so the browser keeps it', async () => {
+    const res = await call('/api/likes/7', { method: 'PUT', base: 'http://192.168.1.20:8787' })
+    expect(res.status).toBe(200)
+    const setCookie = res.headers.get('set-cookie')!
+    expect(setCookie).toContain('HttpOnly')
+    expect(setCookie).not.toContain('Secure')
   })
 
   test('with the cookie again: same count, no new cookie (retry is idempotent)', async () => {
@@ -115,7 +128,7 @@ describe('DELETE /api/likes/{id}', () => {
 })
 
 describe('CSRF: Origin check on every non-GET request', () => {
-  test.each([['missing', null], ['foreign', 'https://evil.example'], ['other scheme', 'https://example.com'], ['null', 'null'], ['other port', 'http://example.com:8080']])('%s Origin: 403 and nothing happens', async (_n, origin) => {
+  test.each([['missing', null], ['foreign', 'https://evil.example'], ['other scheme', 'http://example.com'], ['null', 'null'], ['other port', 'https://example.com:8443']])('%s Origin: 403 and nothing happens', async (_n, origin) => {
     for (const method of ['PUT', 'DELETE', 'POST']) {
       const res = await call('/api/likes/7', { method, origin, body: method === 'POST' ? { liked: '1', lang: 'pt' } : undefined })
       expect([method, res.status, res.headers.get('set-cookie')]).toEqual([method, 403, null])
@@ -186,7 +199,8 @@ describe('POST /api/likes/{id} (no-JS form)', () => {
   })
 
   test('a missing or odd liked value means like, never crashes', async () => {
-    for (const body of [{ lang: 'pt' }, { liked: 'yes', lang: 'pt' }, { liked: '', lang: 'pt' }]) {
+    const bodies: Record<string, string>[] = [{ lang: 'pt' }, { liked: 'yes', lang: 'pt' }, { liked: '', lang: 'pt' }]
+    for (const body of bodies) {
       const res = await call('/api/likes/7', { method: 'POST', body })
       expect(res.status).toBe(303)
     }

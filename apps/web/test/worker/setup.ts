@@ -8,7 +8,7 @@ const seed = seedSql
   .split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n')
   .split(/;\s*\n/).map(s => s.trim()).filter(Boolean)
 
-await applyD1Migrations(env.DB, (env as unknown as { TEST_MIGRATIONS: D1Migration[] }).TEST_MIGRATIONS)
+await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
 
 // Every test starts from the Casa Strega demo only.
 beforeEach(async () => {

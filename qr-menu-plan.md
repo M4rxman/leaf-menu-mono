@@ -317,7 +317,7 @@ All JSON errors use one shape: `{ "error": { "code": "validation_failed", "messa
 | Route | Behaviour |
 |---|---|
 | `GET /q/{code}` | 302 → `/r/{slug}`. Unknown code → 404 page in English. |
-| `GET /r/{slug}` | 302 → `/r/{slug}/{lang}` (§7). Old slug in `slug_history` → 301 to the new slug. |
+| `GET /r/{slug}` | 302 → `/r/{slug}/{lang}` (§7). Old slug in `slug_history` → 301 to the new slug. Slugs are lower case: `/r/Demo` and `/r/DEMO/PT` → 301 to `/r/demo/pt` if that venue exists, else 404. |
 | `GET /r/{slug}/{lang}` | Menu. Same HTML for every visitor, no cookies set. |
 | `GET /r/{slug}/{lang}/d/{dishId}` | Dish detail. |
 | `GET /r/{slug}/{lang}/favorites` | This device's liked dishes. `private, no-store`. |
@@ -330,7 +330,9 @@ All JSON errors use one shape: `{ "error": { "code": "validation_failed", "messa
 | `DELETE /api/likes/{dishId}` | device cookie | `200 { "dishId": 12, "liked": false, "count": 295 }`. Idempotent. |
 | `POST /api/likes/{dishId}` | form `liked=1` or `liked=0` (no-JS fallback) | `303` back to `/r/{slug}/{lang}#dish-{dishId}` |
 
-Errors: 404 if the dish is hidden or deleted (sold-out dishes can still be liked); 429 `{ "error": { "code": "rate_limited" } }` after 10 like requests per minute per IP and dish.
+Errors: 404 if the dish is hidden or deleted (sold-out dishes can still be liked); 429 `{ "error": { "code": "rate_limited" } }` after 10 like requests per minute per IP and dish. The limit is spent before the dish is looked up, so probing ids is limited too. The no-JS `POST` never shows JSON: every outcome is a `303` back to the dish (to `/` for an unknown dish).
+
+🟡 **Open, decide before M7:** guests at one venue share one public Wi-Fi IP, so ten guests liking the same popular dish within a minute would get 429. Not measured yet. Options: raise the per-IP limit (for example 60 per minute per IP and dish) and add a per-device limit of 10 (the device id from the cookie, only when present); or keep it and watch the 429 rate on staging.
 
 ### Auth API
 | Method and path | Request | Response |
@@ -371,7 +373,7 @@ Photos are served from `GET /img/{photoKey}` (Worker reads R2, `Cache-Control: p
 ## 9. Key behaviour and security
 
 **Likes**
-- Device id: random UUID, cookie `chilly_device={uuid}.{hmac}` signed with `DEVICE_SECRET`, `HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`. Set **only on the first ♡ tap**.
+- Device id: random UUID, cookie `chilly_device={uuid}.{hmac}` signed with `DEVICE_SECRET`, `HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`. Set **only on the first ♡ tap** of a dish that can be liked (never for a 404 or 429, an unlike, or a read). `Secure` is left off when the request is plain HTTP, so a phone testing over the LAN keeps the cookie; production is always HTTPS.
 - Like = `INSERT OR IGNORE INTO likes`; unlike = `DELETE`; triggers keep `dishes.likes` right. The nightly task recomputes counts as a safety net.
 - Likes are a soft signal: no ranking across venues or paid features built on them.
 
@@ -437,7 +439,7 @@ Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes abov
 | Layer | Tool | Must cover |
 |---|---|---|
 | Unit | Vitest | `isLang`, language resolution, money formatting, allergen bits, password hash/verify, device cookie signing |
-| Worker / DB | `@cloudflare/vitest-pool-workers` against local D1 | like triggers and idempotency; every CMS write route as owner A against venue B → 404; default-language rules; reorder; soft delete and restore; rate limits; Origin check |
+| Worker / DB | `@cloudflare/vitest-plugin` against the **built** Worker and local D1 | like triggers and idempotency; every CMS write route as owner A against venue B → 404; default-language rules; reorder; soft delete and restore; rate limits; Origin check. Lives in `apps/<app>/test/worker/`; real migrations + seed, reset before every test; each test uses its own client IP for the rate-limit binding; type-checked through `test/worker/tsconfig.json`; CI runs it right after the build. |
 | End to end | Playwright on staging | scan → menu → like → favorites → switch language; owner edits price and sees it on the menu; no-JS heart form; RTL menu screenshot |
 | Accessibility | `@axe-core/playwright` | zero serious violations on menu, dish, favorites, CMS login |
 | Smoke | `curl` after each deploy | `/q/{code}` → 302, `/r/demo/pt` → 200 |
