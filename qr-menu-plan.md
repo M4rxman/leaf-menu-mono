@@ -67,13 +67,16 @@ chillymenu.<tld>/r/{slug}/{lang}/...      guest menu (server-rendered, ~3 KB of 
 chillymenu.<tld>/api/...                  likes API, auth API, CMS API (JSON)
 chillymenu.<tld>/admin/...                CMS (client-rendered Vue app, installable PWA)
         │
-One Cloudflare Worker (Nuxt / Nitro, cloudflare-module preset)
+Two Cloudflare Workers, same domain (Nuxt / Nitro, cloudflare-module preset):
+  web  → /, /r/*, /q/*, /api/likes, /api/menu    (apps/web)
+  cms  → /admin/*, /api/auth, /api/admin         (apps/cms)
         │
 D1 (SQLite) · R2 (photos) · Rate Limiting binding · Cron Trigger (nightly jobs)
 ```
 
-- ✅ **Repository:** one GitHub mono-repo.
-- ✅ **Framework: Nuxt 4 (Vue 3)** for both the guest menu and the CMS, one deploy.
+- ✅ **Repository:** one GitHub mono-repo (npm workspaces: `apps/web`, `apps/cms`, `packages/shared`).
+- 🔧 **Two Workers, one D1 and one R2 (v4 change).** The CMS is its own Nuxt app so the public menu bundle stays small and the CMS can be client-rendered and deployed on its own. Both bind the same database and bucket. Cloudflare routes send `/admin/*`, `/api/auth/*` and `/api/admin/*` to the CMS Worker and everything else to web. Open: the session cookie scope between the two.
+- ✅ **Framework: Nuxt 4 (Vue 3)** for both the guest menu and the CMS, as two apps sharing `packages/shared`.
 - ⚠️ **Watch: CPU time.** Nuxt is heavier than the Hono setup the review assessed. The budget and how it's measured are in §10.
 
 **🔧 Rendering per area (v3 change)**
@@ -91,7 +94,7 @@ D1 (SQLite) · R2 (photos) · Rate Limiting binding · Cron Trigger (nightly job
 |---|---|---|
 | Framework | `nuxt@4` | ✅ |
 | Typed DB queries | `drizzle-orm` (D1 driver) | Schema in TS gives typed queries. SQL migrations stay hand-written and reviewed (§6), because triggers, partial indexes and CHECKs are clearer in SQL. A test compares the Drizzle schema with the migrated DB. |
-| Validation | `zod` | One schema per request body in `shared/schemas/`, used by the CMS forms and the API. |
+| Validation | `zod` | One schema per request body in `packages/shared/src/schemas/`, used by the CMS forms and the API. |
 | UI strings | `@nuxtjs/i18n` (`strategy: 'no_prefix'`, lazy JSON) | The locale is set from the `{lang}` URL segment, not from the module's own prefixing. |
 | Security headers | `nuxt-security` | CSP with nonces, `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors 'none'`. Its CSRF option is off; we use our own Origin check (§9). |
 | QR | `qrcode` | SVG and PNG. A6 card PDF with `pdf-lib`. |
@@ -104,38 +107,51 @@ D1 (SQLite) · R2 (photos) · Rate Limiting binding · Cron Trigger (nightly job
 
 ```
 chilly-menu/
-├─ app/
-│  ├─ pages/
-│  │  ├─ r/[slug]/[lang]/index.vue          menu
-│  │  ├─ r/[slug]/[lang]/d/[dishId].vue     dish detail
-│  │  ├─ r/[slug]/[lang]/favorites.vue      favorites
-│  │  └─ admin/                             CMS pages (login, venue, languages, categories, dishes, qr, users)
-│  ├─ components/menu/                      DishCard, HeartButton, LangSwitch, CategoryTabs
-│  ├─ components/admin/                     TranslationTabs, PhotoUploader, SortableList
-│  └─ assets/css/                           logical properties only (margin-inline-*, no left/right)
-├─ server/
-│  ├─ routes/q/[code].get.ts                QR short link
-│  ├─ routes/r/[slug]/index.get.ts          language redirect
-│  ├─ api/likes/…                           §8
-│  ├─ api/auth/…                            §8
-│  ├─ api/admin/…                           §8
-│  ├─ middleware/                           01.origin-check.ts, 02.session.ts
-│  ├─ db/schema.ts                          Drizzle schema
-│  ├─ utils/scoped-db.ts                    every owner query goes through this
-│  ├─ utils/password.ts, session.ts, device.ts, lang.ts, money.ts
-│  └─ tasks/nightly.ts                      reconcile likes, purge sessions, purge soft-deleted rows
-├─ shared/
-│  ├─ schemas/                              Zod request schemas
-│  ├─ langs.ts                              the curated pool (§7) + isLang()
-│  └─ allergens.ts                          the 14 EU allergens ↔ bit positions
-├─ i18n/locales/                            en.json pt.json es.json de.json uk.json fr.json
-├─ public/menu.js                           hearts script for guest pages (< 3 KB)
-├─ migrations/0001_init.sql                 §6
-├─ seed/casa-strega.sql                     §16
-├─ test/                                    unit/, worker/, e2e/
+├─ apps/
+│  ├─ web/                                  public Worker: landing + guest menu
+│  │  ├─ app/
+│  │  │  ├─ pages/
+│  │  │  │  ├─ r/[slug]/[lang]/index.vue          menu
+│  │  │  │  ├─ r/[slug]/[lang]/d/[dishId].vue     dish detail
+│  │  │  │  └─ r/[slug]/[lang]/favorites.vue      favorites
+│  │  │  ├─ components/menu/                      DishCard, HeartButton, LangSwitch, CategoryTabs
+│  │  │  └─ assets/css/                           logical properties only (margin-inline-*, no left/right)
+│  │  ├─ server/
+│  │  │  ├─ routes/q/[code].get.ts                QR short link
+│  │  │  ├─ routes/r/[slug]/index.get.ts          language redirect
+│  │  │  ├─ api/likes/…                           §8
+│  │  │  ├─ middleware/                           01.origin-check.ts, 02.device.ts
+│  │  │  └─ utils/container.ts                    composition root (Cloudflare bindings)
+│  │  ├─ i18n/locales/                            en.json pt.json es.json de.json uk.json fr.json
+│  │  ├─ public/menu.js                           hearts script for guest pages (< 3 KB)
+│  │  ├─ test/                                    locale parity, worker/, e2e/
+│  │  ├─ nuxt.config.ts · wrangler.toml
+│  ├─ cms/                                  owner Worker, baseURL /admin/, ssr: false
+│  │  ├─ app/
+│  │  │  ├─ pages/                                login, venue, languages, categories, dishes, qr, users
+│  │  │  └─ components/                           TranslationTabs, PhotoUploader, SortableList
+│  │  ├─ server/
+│  │  │  ├─ api/auth/…, api/admin/…               §8
+│  │  │  ├─ middleware/                           01.origin-check.ts, 02.session.ts
+│  │  │  ├─ utils/scoped-db.ts                    every owner query goes through this
+│  │  │  ├─ utils/password.ts, session.ts
+│  │  │  └─ tasks/nightly.ts                      reconcile likes, purge sessions, purge soft-deleted rows
+│  │  ├─ nuxt.config.ts · wrangler.toml
+├─ packages/
+│  └─ shared/                               @chilly/shared, TS source, no build step
+│     ├─ src/
+│     │  ├─ langs.ts                              the curated pool (§7) + isLang()
+│     │  ├─ paths.ts, plural.ts
+│     │  ├─ domain/                               pure TS: types, ports, MenuService, resolveText, formatPrice
+│     │  ├─ infra/                                D1 implementations of the ports
+│     │  ├─ schemas/                              Zod request schemas
+│     │  └─ allergens.ts                          the 14 EU allergens ↔ bit positions
+│     ├─ migrations/0001_init.sql                 §6
+│     ├─ seed.sql                                 §16 (Casa Strega demo)
+│     └─ test/                                    schema, domain, contract tests
 ├─ .github/workflows/                       ci.yml, backup.yml
-├─ nuxt.config.ts · wrangler.toml · drizzle.config.ts · eslint.config.mjs
-└─ package.json                             pnpm, Node 22 LTS
+├─ drizzle.config.ts · eslint.config.mjs (per workspace)
+└─ package.json                             npm workspaces, Node ≥ 22.22.3
 ```
 
 ## 6. Data model: `migrations/0001_init.sql`
@@ -294,7 +310,7 @@ Rules the SQL can't express, enforced in `scoped-db.ts` and covered by tests:
 
 ## 8. Routes and API
 
-All JSON errors use one shape: `{ "error": { "code": "validation_failed", "message": "…", "fields": { "name.pt": "required" } } }` with status 400, 401, 403, 404, 409, 422 or 429. Request bodies are validated with the Zod schema of the same name in `shared/schemas/`.
+All JSON errors use one shape: `{ "error": { "code": "validation_failed", "message": "…", "fields": { "name.pt": "required" } } }` with status 400, 401, 403, 404, 409, 422 or 429. Request bodies are validated with the Zod schema of the same name in `packages/shared/src/schemas/`.
 
 ### Guest pages
 | Route | Behaviour |
@@ -425,7 +441,7 @@ Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes abov
 ## 14. Milestones and acceptance checks
 
 **M0. Project setup**
-- Repo, Nuxt 4, pnpm, Workers deploy, D1 and R2 for staging, lint hook, CI pipeline.
+- Repo, Nuxt 4, npm workspaces, Workers deploy, D1 and R2 for staging, lint hook, CI pipeline.
 - ✔ A push to `main` deploys "hello" to the staging domain over HTTPS.
 - ✔ A commit with a lint error is blocked locally and fails CI.
 - ✔ A Workers test proves `Intl.DisplayNames`, `Intl.Locale#getTextInfo` and `Intl.NumberFormat('pt-PT', EUR)` work on Workers.
