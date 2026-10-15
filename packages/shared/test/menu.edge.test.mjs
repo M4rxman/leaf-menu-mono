@@ -114,3 +114,18 @@ test('onlyDishes: keeps order and categories that still have a dish; unknown ids
   assert.deepEqual(onlyDishes(m, []).categories, [])
   assert.equal(onlyDishes(m, [1, 2, 3, 4]).categories.length, 3)
 })
+
+test('slugs are lower case: /r/Demo 301s to /r/demo (language kept when valid), never serves a second URL', async () => {
+  const s = new MenuService({
+    getMenu: async x => (x === 'demo' ? raw([], { slug: 'demo' }) : null),
+    currentSlugFor: async o => (o === 'old' ? 'demo' : null)
+  })
+  assert.deepEqual(await s.getMenu('Demo', 'pt'), { kind: 'redirect', slug: 'demo', lang: 'pt', permanent: true })
+  assert.deepEqual(await s.getMenu('DEMO', 'PT'), { kind: 'redirect', slug: 'demo', lang: 'pt', permanent: true })
+  assert.deepEqual(await s.getMenu('DEMO', 'zz'), { kind: 'redirect', slug: 'demo', lang: 'pt', permanent: true }) // invalid hint -> the venue default
+  assert.deepEqual(await s.getMenu('OLD', 'pt'), { kind: 'redirect', slug: 'demo', lang: 'pt', permanent: true }) // renamed AND upper case
+  assert.deepEqual((await s.enter('Demo', 'en')).permanent, true)
+  assert.equal((await s.enter('Demo', 'en')).slug, 'demo')
+  assert.deepEqual(await s.getMenu('NOPE', 'pt'), { kind: 'notfound' }) // upper-case typo of nothing is still a 404
+  assert.deepEqual(await s.enter('NOPE', 'pt'), { kind: 'notfound' })
+})

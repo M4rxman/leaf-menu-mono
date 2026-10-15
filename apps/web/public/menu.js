@@ -31,8 +31,10 @@
       }
       // 429 / 404: keep the current state and the scroll position.
       if (res.ok) {
-        const d = await res.json()
-        paint(form, d.liked, d.count)
+        try {
+          const d = await res.json()
+          paint(form, d.liked, d.count)
+        } catch {} // unreadable body: keep the current state
       }
     })
   }

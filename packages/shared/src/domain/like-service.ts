@@ -14,10 +14,14 @@ export class LikeService {
     this.store = store
   }
 
-  /** Like or unlike. Null if the dish can't be liked. No device (never liked anything) can only "unlike", a no-op. */
-  async set(dishId: number, deviceId: string | null, liked: boolean): Promise<LikeResult | null> {
+  /**
+   * Like or unlike. Null if the dish can't be liked. No device (never liked anything) can only "unlike", a no-op.
+   * The device may be a function so it is resolved (and a cookie issued) only after the dish is known to be likeable.
+   */
+  async set(dishId: number, device: string | null | (() => Promise<string | null>), liked: boolean): Promise<LikeResult | null> {
     const dish = await this.store.findLikeable(dishId)
     if (!dish) return null
+    const deviceId = typeof device === 'function' ? await device() : device
     if (!deviceId) return { slug: dish.slug, dishId, liked: false, count: await this.store.currentCount(dishId) }
     return { slug: dish.slug, dishId, liked, count: await this.store.setLiked(dishId, deviceId, liked) }
   }

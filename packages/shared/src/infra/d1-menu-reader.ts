@@ -17,6 +17,16 @@ function byId(rows: I18nRow[], column: string): Map<number, Translations> {
   return map
 }
 
+/** info_json is owner-edited text: a corrupt value must not take the whole menu down. */
+function parseInfo(json: unknown): Record<string, unknown> {
+  try {
+    const v = JSON.parse((json as string) || '{}')
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : {}
+  } catch {
+    return {}
+  }
+}
+
 /** All SQL for the guest page. A fixed number of queries per menu, no N+1. */
 export class D1MenuReader implements MenuReader {
   private readonly db: Db
@@ -101,7 +111,7 @@ export class D1MenuReader implements MenuReader {
       slug: r.slug as string,
       defaultLang: r.default_lang as Lang,
       currency: r.currency as string,
-      info: JSON.parse((r.info_json as string) || '{}'),
+      info: parseInfo(r.info_json),
       langs: langs.map(l => l.lang),
       names: text('name'),
       about: text('about'),

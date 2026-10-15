@@ -94,3 +94,42 @@ test('invariant: dishes.likes always equals the number of like rows, after a lon
   for (let i = 0; i < 600; i++) await store.setLiked(dishes[rand(dishes.length)], devices[rand(devices.length)], rand(2) === 1)
   for (const id of dishes) assert.equal(countRow(id), rows(id), `dish ${id}`)
 })
+
+test('a hidden dish drops out of favorites but keeps its like; showing it again brings it back', async () => {
+  await store.setLiked(6, 'dev-h', true)
+  const before = countRow(6)
+  sqlite.exec('UPDATE dishes SET is_visible = 0 WHERE id = 6')
+  assert.deepEqual(await store.likedDishIds('demo', 'dev-h'), [])
+  assert.equal(countRow(6), before) // the like is not lost
+  sqlite.exec('UPDATE dishes SET is_visible = 1 WHERE id = 6')
+  assert.deepEqual(await store.likedDishIds('demo', 'dev-h'), [6])
+  await store.setLiked(6, 'dev-h', false)
+})
+
+test('removing a category removes its dishes and their likes, and the other categories are untouched', async () => {
+  const keep = await store.counts('demo')
+  await store.setLiked(1, 'dev-k', true)
+  await store.setLiked(4, 'dev-k', true)
+  const cat = sqlite.prepare('SELECT category_id AS c FROM dishes WHERE id = 4').get().c
+  sqlite.prepare('DELETE FROM categories WHERE id = ?').run(cat)
+  assert.equal(rows(4), 0)
+  assert.equal(await store.findLikeable(4), null)
+  assert.ok(!(4 in await store.counts('demo')))
+  assert.ok(1 in keep && (await store.likedDishIds('demo', 'dev-k')).includes(1))
+})
+
+test('simultaneous taps from one device count once (the insert is idempotent)', async () => {
+  const before = countRow(3)
+  const results = await Promise.all(Array.from({ length: 25 }, () => store.setLiked(3, 'dev-race', true)))
+  assert.equal(countRow(3), before + 1)
+  assert.ok(results.every(c => c === before + 1))
+  await Promise.all(Array.from({ length: 25 }, () => store.setLiked(3, 'dev-race', false)))
+  assert.equal(countRow(3), before)
+})
+
+test('many devices on one dish: the counter equals the number of distinct devices', async () => {
+  const before = countRow(9)
+  for (let i = 0; i < 100; i++) await store.setLiked(9, `crowd-${i}`, true)
+  assert.equal(countRow(9), before + 100)
+  assert.equal((await store.counts('demo'))[9], before + 100)
+})
