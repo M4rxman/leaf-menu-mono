@@ -2,36 +2,26 @@
     "name": "chilly-menu",
     "type": "module",
     "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
     "scripts": {
-        "dev": "nuxt dev",
-        "build": "nuxt build",
-        "preview": "nuxt build && wrangler dev",
-        "db:migrate": "wrangler d1 migrations apply DB --local",
-        "db:seed": "wrangler d1 execute DB --local --file seed.sql",
-        "test": "node --experimental-sqlite --experimental-strip-types --test \"test/*.test.mjs\"",
-        "postinstall": "nuxt prepare",
-        "prepare": "husky",
-        "lint": "eslint .",
-        "typecheck": "nuxt typecheck"
-    },
-    "dependencies": {
-        "@iconify-json/lucide": "^1.2.143",
-        "@nuxt/icon": "^2.5.1",
-        "@nuxt/ui": "^4.11.3",
-        "@nuxtjs/i18n": "^10.6.0",
-        "nitro-cloudflare-dev": "^0.2.2",
-        "nuxt": "^4.6.1",
-        "vue": "^3.5.43",
-        "vue-router": "^5.4.0"
+        "dev": "npm run dev -w @chilly/web",
+        "dev:cms": "npm run dev -w @chilly/cms",
+        "build": "npm run build --workspaces --if-present",
+        "preview": "npm run preview -w @chilly/web",
+        "preview:cms": "npm run preview -w @chilly/cms",
+        "db:migrate": "npm run db:migrate -w @chilly/web",
+        "db:seed": "npm run db:seed -w @chilly/web",
+        "test": "npm test --workspaces --if-present",
+        "lint": "npm run lint --workspaces --if-present",
+        "typecheck": "npm run typecheck --workspaces --if-present",
+        "prepare": "husky"
     },
     "devDependencies": {
-        "@nuxt/eslint": "^1.17.0",
-        "eslint": "^10.12.0",
         "husky": "^9.1.7",
-        "lint-staged": "^16.4.0",
-        "typescript": "^6.0.3",
-        "vue-tsc": "^3.3.13",
-        "wrangler": "^4.149.0"
+        "lint-staged": "^16.4.0"
     },
     "lint-staged": {
         "*.{js,mjs,ts,vue}": "eslint --fix"

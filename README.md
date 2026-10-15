@@ -10,15 +10,19 @@ Needs Node ≥ 22.22.3 (or ≥ 24.15) and npm.
 npm install        # also installs the git pre-commit hook (husky)
 ```
 
+## Layout
+
+npm-workspaces monorepo: `apps/web` (guest menu Worker), `apps/cms` (owner CMS Worker, served under `/admin`), `packages/shared` (domain, infra, languages, migrations, seed). All scripts below run from the repo root.
+
 ## Scripts
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Nuxt dev server. No D1/R2 bindings, so use `preview` for anything touching the database. |
-| `npm run preview` | Build, then `wrangler dev` at http://localhost:8787 with local D1 and R2. |
+| `npm run dev` / `dev:cms` | Nuxt dev server for web / cms. No D1/R2 bindings, so use `preview` for anything touching the database. |
+| `npm run preview` / `preview:cms` | Build, then `wrangler dev` with local D1 and R2: web at http://localhost:8787, cms at http://localhost:8788/admin/. |
 | `npm run build` | Production build for Workers into `.output/`. |
-| `npm run db:migrate` | Apply `migrations/` to the local D1 database. |
-| `npm run db:seed` | Load the Casa Strega demo (slug `demo`) into local D1. Safe to re-run. |
+| `npm run db:migrate` | Apply `packages/shared/migrations/` to the local D1 database. |
+| `npm run db:seed` | Load the Casa Strega demo (slug `demo`) into local D1. Safe to re-run. Local DB state lives in `.wrangler/state` at the repo root, shared by both apps. |
 | `npm test` | Schema tests (`node:test` + `node:sqlite`, no extra deps). |
 | `npm run lint` | ESLint (`@nuxt/eslint`) on the whole repo. |
 
