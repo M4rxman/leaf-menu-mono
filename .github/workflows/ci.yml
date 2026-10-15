@@ -31,3 +31,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Worker tests (built worker in workerd, local D1)
+        run: npm run test:worker -w @chilly/web

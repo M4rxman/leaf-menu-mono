@@ -23,6 +23,7 @@ Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) bind
 - `npm run preview` / `npm run preview:cms` — build + `wrangler dev` (web http://localhost:8787, cms http://localhost:8788/admin/) with local D1/R2
 - `npm run db:migrate` / `npm run db:seed` — apply migrations / load Casa Strega demo (slug `demo`) into local D1
 - `npm test` — all workspaces (node:test + node:sqlite, no deps); `npm run lint`, `npm run typecheck`, `npm run build` likewise
+- `npm run test:worker` — builds web, then runs `apps/web/test/worker/*.test.ts` (Vitest + `@cloudflare/vitest-plugin`) against the built Worker in workerd with local D1 (real migrations + seed) and the real `LIKE_LIMITER` binding. Tests call it via `exports.default.fetch`; each test starts from the demo seed. Uses a fresh client IP per test (`cf-connecting-ip`) to avoid sharing rate-limit budgets. Needs a prior build, so `vitest run` alone tests stale code.
 - A husky pre-commit hook runs `eslint --fix` on staged files via lint-staged
 
 ## Layout

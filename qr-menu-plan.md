@@ -101,7 +101,7 @@ D1 (SQLite) · R2 (photos) · Rate Limiting binding · Cron Trigger (nightly job
 | PWA (CMS) | `@vite-pwa/nuxt` | Scoped to `/admin/`. |
 | Passwords | WebCrypto PBKDF2-SHA256 | No library. Iterations measured in M0. |
 | Lint / format | `@nuxt/eslint`, `prettier`, `husky`, `lint-staged` | §12. |
-| Tests | `vitest`, `@nuxt/test-utils`, `@cloudflare/vitest-pool-workers`, `@playwright/test`, `@axe-core/playwright` | §13. |
+| Tests | `vitest`, `@nuxt/test-utils`, `@cloudflare/vitest-plugin` (successor of the deprecated vitest-pool-workers), `@playwright/test`, `@axe-core/playwright` | §13. |
 
 ## 5. Repo layout
 
