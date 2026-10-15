@@ -120,7 +120,8 @@ chilly-menu/
 │  │  │  ├─ routes/q/[code].get.ts                QR short link
 │  │  │  ├─ routes/r/[slug]/index.get.ts          language redirect
 │  │  │  ├─ api/likes/…                           §8
-│  │  │  ├─ middleware/                           01.origin-check.ts, 02.device.ts
+│  │  │  ├─ middleware/                           01.origin-check.ts
+│  │  │  ├─ utils/device.ts                       signed device cookie: read in the likes handlers only
 │  │  │  └─ utils/container.ts                    composition root (Cloudflare bindings)
 │  │  ├─ i18n/locales/                            en.json pt.json es.json de.json uk.json fr.json
 │  │  ├─ public/menu.js                           hearts script for guest pages (< 3 KB)
@@ -390,7 +391,9 @@ Photos are served from `GET /img/{photoKey}` (Worker reads R2, `Cache-Control: p
 - Encode `https://<domain>/q/{qrCode}` (6 chars, base58, generated once). Error correction level Q. Downloads: SVG, 2000 px PNG, A6 PDF card with venue name.
 
 **Accessibility**
-- ♡ is a `<button aria-pressed>` inside a `<form method="post">`, labelled "Like Bufalina Panizza, 329 likes"; `aria-live="polite"` for count changes.
+- ♡ is a `<button aria-pressed>` inside a `<form method="post">` with a visually hidden label "Like Bufalina Panizza". The count sits in an `aria-live="polite"` element with a visually hidden unit ("Likes: 329") and is linked to the button with `aria-describedby`, so it is announced as "Like Bufalina Panizza, pressed, Likes: 329". The unit is a count-neutral noun, so no plural rules are needed in `menu.js`.
+- The device cookie is **never read in a middleware**: a middleware would verify the signature on every request, including every menu render. Only the likes handlers and the favorites API read it.
+- A failed like (429, 404) never shows JSON to a guest: `menu.js` keeps the current state on a non-OK response (it re-posts the form only on a network error), and `POST /api/likes/{id}` always answers `303` back to the dish.
 - 44×44 px tap targets, visible focus, 4.5:1 contrast over photos, `prefers-reduced-motion` respected.
 
 ## 10. Performance budget and caching
@@ -401,6 +404,7 @@ Photos are served from `GET /img/{photoKey}` (Worker reads R2, `Cache-Control: p
 | Guest menu HTML, 50 dishes | ≤ 60 KB gzipped | e2e test on the seed |
 | Images on first screen | ≤ 300 KB total | small (400 px) WebP in cards, `loading="lazy"` below the fold |
 | Worker CPU, menu render | p95 ≤ 10 ms | Workers Logs / Observability from the first staging deploy |
+| Worker CPU, `GET /api/r/{slug}/likes` (one extra call per menu view) | p95 ≤ 5 ms | Same dashboard. It is what keeps the menu HTML identical for every visitor, so the HTML can be cached later. |
 | Largest Contentful Paint on a mid-range phone, 4G | ≤ 2.5 s | Lighthouse CI on staging |
 
 Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes above 10 ms, cache the rendered HTML per `slug + lang` in the Workers Cache API for 60 s and purge that venue's keys on every CMS save. Because the HTML is identical for every visitor, this needs no redesign.

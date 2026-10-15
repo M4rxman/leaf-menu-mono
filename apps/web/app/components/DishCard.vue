@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { DishView } from '@chilly/shared/domain/types'
 
-defineProps<{ dish: DishView }>()
+defineProps<{ dish: DishView, lang: string, liked?: boolean }>()
 </script>
 
 <template>
-  <article class="flex gap-3 rounded-card border border-ink/10 p-3" :class="{ 'opacity-60': dish.isSoldOut }">
+  <article :id="`dish-${dish.id}`" class="scroll-mt-14 flex gap-3 rounded-card border border-ink/10 p-3" :class="{ 'opacity-60': dish.isSoldOut }">
     <div
       class="flex size-20 shrink-0 items-center justify-center rounded-card bg-ink/5 text-ink/30"
       role="img"
@@ -25,10 +25,6 @@ defineProps<{ dish: DishView }>()
         <span v-if="dish.isSoldOut" class="ms-2 text-sm font-normal text-ink/70">{{ $t('guest.soldOut') }}</span>
       </p>
     </div>
-    <!-- Display only for now; the interactive LikeButton comes with the likes API. -->
-    <div class="flex items-start gap-1 text-sm text-ink/70" :aria-label="$t('guest.likes', dish.likes)">
-      <Icon name="i-lucide-heart" class="size-4" />
-      <span>{{ dish.likes }}</span>
-    </div>
+    <HeartButton :dish="dish" :lang="lang" :liked="liked" />
   </article>
 </template>

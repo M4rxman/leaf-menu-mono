@@ -2,7 +2,11 @@
   "guest": {
     "language": "Langue",
     "categories": "Catégories",
-    "likes": "{n} j’aime | {n} j’aime",
-    "soldOut": "Épuisé"
+    "likes": "J'aime",
+    "soldOut": "Épuisé",
+    "like": "Aimer {name}",
+    "favorites": "Favoris",
+    "noFavorites": "Aucun favori pour l'instant. Touchez le cœur d'un plat pour l'enregistrer ici.",
+    "backToMenu": "Retour au menu"
   }
 }
