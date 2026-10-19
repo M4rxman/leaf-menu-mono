@@ -8,7 +8,7 @@ interface Me {
 
 /** The server's `{ error: { code, message } }` body, as ofetch hands it over. */
 export const apiMessage = (e: unknown, fallback = 'Something went wrong') =>
-  (e as { data?: { data?: { error?: { message?: string } } } }).data?.data?.error?.message ?? fallback
+  (e as { data?: { error?: { message?: string } } }).data?.error?.message ?? fallback
 
 export function useAuth() {
   const me = useState<Me | null>('me', () => null)

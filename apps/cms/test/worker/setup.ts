@@ -10,7 +10,7 @@ const seed = seedSql
   .split(/;\s*\n/).map(s => s.trim()).filter(Boolean)
 
 export const PASSWORD = 'correct horse battery'
-const hash = await hashPassword(PASSWORD, 1000) // the stored string carries the count, so tests stay fast
+const hash = await hashPassword(PASSWORD, env.PASSWORD_PEPPER, 1000) // the stored string carries the count, so tests stay fast
 
 await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
 

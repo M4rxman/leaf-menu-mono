@@ -76,7 +76,15 @@ export class D1AuthStore implements AuthStore {
     await this.db.run('INSERT INTO login_failures (key, at) VALUES (?, ?)', key, at)
   }
 
+  async forgetFailure(key: string, at: number) {
+    await this.db.run('DELETE FROM login_failures WHERE rowid = (SELECT MAX(rowid) FROM login_failures WHERE key = ? AND at = ?)', key, at)
+  }
+
   async clearFailures(key: string) {
     await this.db.run('DELETE FROM login_failures WHERE key = ?', key)
+  }
+
+  async purgeFailures(before: number) {
+    await this.db.run('DELETE FROM login_failures WHERE at <= ?', before)
   }
 }

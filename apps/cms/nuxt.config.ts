@@ -9,5 +9,9 @@ export default defineNuxtConfig({
   ui: { fonts: false },
   icon: { serverBundle: 'local' },
   build: { transpile: ['@chilly/shared'] },
-  nitro: { preset: 'cloudflare-module', cloudflareDev: { persistDir: '../../.wrangler/state' } }
+  nitro: {
+    preset: 'cloudflare-module',
+    cloudflareDev: { persistDir: '../../.wrangler/state' },
+    errorHandler: '~~/server/error-handler'
+  }
 })

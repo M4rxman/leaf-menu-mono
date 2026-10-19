@@ -12,6 +12,9 @@ database_name = "chilly-menu"
 database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "../../packages/shared/migrations"
 
+# Secret (wrangler secret put PASSWORD_PEPPER; local: apps/cms/.dev.vars): PASSWORD_PEPPER. Keep a copy in the
+# password manager: without it no stored password verifies (an admin reset still works).
+
 [[r2_buckets]]
 binding = "PHOTOS"
 bucket_name = "chilly-photos"

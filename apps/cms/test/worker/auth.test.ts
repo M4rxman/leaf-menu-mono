@@ -20,7 +20,13 @@ function call(path: string, o: Opts = {}) {
 }
 const cookieOf = (res: Response) => res.headers.get('set-cookie')?.split(';')[0] ?? null
 const login = (email: string, password = PASSWORD, ip?: string) => call('/auth/login', { method: 'POST', body: { email, password }, ip })
-const errorCode = async (res: Response) => ((await res.json()) as { data: { error: { code: string } } }).data.error.code
+// Plan §8: every API error is exactly `{ "error": { "code", "message" } }`.
+const errorCode = async (res: Response) => {
+  const body = (await res.json()) as { error: { code: string, message: string } }
+  expect(Object.keys(body)).toEqual(['error'])
+  expect(typeof body.error.message).toBe('string')
+  return body.error.code
+}
 
 async function signIn(email = 'admin@x.pt') {
   const res = await login(email)
@@ -35,11 +41,18 @@ describe('CSRF origin check', () => {
   ])('POST with %s -> 403, before any handler runs', async (_, origin) => {
     const res = await call('/auth/login', { method: 'POST', origin, body: { email: 'admin@x.pt', password: PASSWORD } })
     expect(res.status).toBe(403)
+    expect(await errorCode(res)).toBe('bad_origin')
     expect(res.headers.get('set-cookie')).toBeNull()
   })
 
   test('an unknown route is also refused', async () => {
     expect((await call('/nothing', { method: 'DELETE', origin: 'https://evil.example' })).status).toBe(403)
+  })
+
+  test('an unknown route with a good Origin is a plain 404 in the same error shape', async () => {
+    const res = await call('/nothing', { method: 'POST' })
+    expect(res.status).toBe(404)
+    expect(await errorCode(res)).toBe('not_found')
   })
 
   test('GET needs no Origin', async () => {
@@ -93,6 +106,13 @@ describe('POST /auth/login', () => {
     expect(await errorCode(blocked)).toBe('rate_limited')
     expect(blocked.headers.get('set-cookie')).toBeNull()
     expect((await login('owner@x.pt')).status).toBe(204)
+  })
+
+  test('parallel guesses cannot get past the throttle', async () => {
+    const ip = newIp()
+    const statuses = (await Promise.all(Array.from({ length: 20 }, () => login('admin@x.pt', 'wrong password', ip)))).map(r => r.status)
+    expect(statuses.filter(s => s === 429).length).toBeGreaterThanOrEqual(14)
+    expect(statuses.filter(s => s === 401).length).toBeLessThanOrEqual(6)
   })
 
   test('failures from one IP block that IP for other emails too', async () => {
@@ -163,6 +183,14 @@ describe('POST /auth/password', () => {
     expect((await call('/auth/me', { cookie: other })).status).toBe(401)
     expect((await login('owner@x.pt', PASSWORD)).status).toBe(401)
     expect((await login('owner@x.pt', 'a-brand-new-password')).status).toBe(204)
+  })
+
+  test('guessing the current password is throttled: the 6th wrong guess -> 429, even with the right one', async () => {
+    const cookie = await signIn('owner@x.pt')
+    for (let i = 0; i < 5; i++) expect((await change(cookie, { current: `guess ${i}`, next: 'a-brand-new-password' })).status).toBe(422)
+    const blocked = await change(cookie, { current: PASSWORD, next: 'a-brand-new-password' })
+    expect(blocked.status).toBe(429)
+    expect(await errorCode(blocked)).toBe('rate_limited')
   })
 
   test('a cross-origin change is refused', async () => {

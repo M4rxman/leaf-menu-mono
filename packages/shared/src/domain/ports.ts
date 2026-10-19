@@ -50,9 +50,13 @@ export interface AuthStore {
   /** All of a user's sessions, except `keep` if given. */
   deleteSessions(userId: number, keep?: string): Promise<void>
   setPassword(userId: number, passwordHash: string, mustChange: boolean): Promise<void>
+  /** Attempts are recorded before they are counted, so parallel requests all see each other. */
   failureCount(key: string, since: number): Promise<number>
   recordFailure(key: string, at: number): Promise<void>
+  /** Takes back one recorded attempt (the one that turned out to be a success). */
+  forgetFailure(key: string, at: number): Promise<void>
   clearFailures(key: string): Promise<void>
+  purgeFailures(before: number): Promise<void>
 }
 
 /** True if the caller may proceed: at most `limit` calls per key per minute. */

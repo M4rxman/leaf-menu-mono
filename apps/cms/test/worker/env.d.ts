@@ -2,6 +2,7 @@
 declare namespace Cloudflare {
   interface Env {
     DB: D1Database
+    PASSWORD_PEPPER: string
     TEST_MIGRATIONS: import('@cloudflare/vitest-plugin').D1Migration[]
   }
   interface Exports {

@@ -7,7 +7,12 @@ export default defineConfig(async () => ({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: './wrangler.toml' },
-      miniflare: { bindings: { TEST_MIGRATIONS: await readD1Migrations('../../packages/shared/migrations') } }
+      miniflare: {
+        bindings: {
+          PASSWORD_PEPPER: 'test-password-pepper',
+          TEST_MIGRATIONS: await readD1Migrations('../../packages/shared/migrations')
+        }
+      }
     })
   ],
   test: {

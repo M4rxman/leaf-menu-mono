@@ -10,7 +10,7 @@ declare module 'h3' {
   }
 }
 
-/** Plan §8 error shape: `{ error: { code, message } }` (h3 nests it under `data`). */
+/** Throws an API error; server/error-handler.ts turns it into the plan §8 body `{ error: { code, message } }`. */
 export function fail(statusCode: number, code: string, message: string): never {
   throw createError({ statusCode, statusMessage: code, message, data: { error: { code, message } } })
 }
