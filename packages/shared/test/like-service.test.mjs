@@ -2,7 +2,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { LikeService } from '../src/domain/like-service.ts'
-import { cfRateLimiter } from '../src/infra/d1-like-store.ts'
 
 function spyStore({ likeable = { slug: 'demo' }, count = 5 } = {}) {
   const calls = []
@@ -65,14 +64,3 @@ test('store failures are not swallowed', async () => {
   await assert.rejects(new LikeService(store).set(1, 'dev', true), /D1 down/)
 })
 
-test('cfRateLimiter maps the binding\'s success flag and passes the key through', async () => {
-  const seen = []
-  const binding = ok => ({ limit: async (o) => { seen.push(o); return { success: ok } } })
-  assert.equal(await cfRateLimiter(binding(true)).allow('1.2.3.4:7'), true)
-  assert.equal(await cfRateLimiter(binding(false)).allow('1.2.3.4:7'), false)
-  assert.deepEqual(seen, [{ key: '1.2.3.4:7' }, { key: '1.2.3.4:7' }])
-})
-
-test('cfRateLimiter does not hide a failing binding (the caller decides)', async () => {
-  await assert.rejects(cfRateLimiter({ limit: async () => { throw new Error('binding gone') } }).allow('k'), /binding gone/)
-})

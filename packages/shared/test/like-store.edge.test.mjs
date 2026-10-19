@@ -34,7 +34,7 @@ test('a deleted venue: nothing in it can be liked, counted or listed', async () 
   assert.deepEqual(await store.counts('other'), {})
   assert.deepEqual(await store.likedDishIds('other', 'dev-x'), [])
   sqlite.exec('UPDATE restaurants SET deleted_at = NULL WHERE id = 2')
-  assert.deepEqual(await store.findLikeable(100), { slug: 'other' })
+  assert.deepEqual(await store.findLikeable(100), { slug: 'other', likeLimitPerMin: 10 })
 })
 
 test('a hidden or deleted category hides its dishes from likes', async () => {
@@ -44,7 +44,7 @@ test('a hidden or deleted category hides its dishes from likes', async () => {
   sqlite.exec("UPDATE categories SET is_visible = 1, deleted_at = datetime('now') WHERE id = 50")
   assert.equal(await store.findLikeable(100), null)
   sqlite.exec('UPDATE categories SET deleted_at = NULL WHERE id = 50')
-  assert.deepEqual(await store.findLikeable(100), { slug: 'other' })
+  assert.deepEqual(await store.findLikeable(100), { slug: 'other', likeLimitPerMin: 10 })
 })
 
 test('one device unliking never touches another device\'s like', async () => {

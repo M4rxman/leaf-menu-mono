@@ -1,4 +1,4 @@
-// The built Nitro worker in workerd: handlers, middleware, cookie attributes and the real rate-limit binding.
+// The built Nitro worker in workerd: handlers, middleware, cookie attributes and the D1-backed per-venue rate limit.
 import { env, exports } from 'cloudflare:workers'
 import { verifyDevice } from '@chilly/shared/domain/device'
 import { describe, expect, test } from 'vitest'
@@ -142,7 +142,24 @@ describe('CSRF: Origin check on every non-GET request', () => {
   })
 })
 
-describe('rate limit: 10 like requests per minute per IP and dish', () => {
+describe('rate limit: restaurants.like_limit_per_min (default 10) per IP and dish', () => {
+  test("the venue's own limit applies at once, in both directions", async () => {
+    const put = (ip: string) => call('/api/likes/7', { method: 'PUT', ip }).then(r => r.status)
+    await env.DB.prepare('UPDATE restaurants SET like_limit_per_min = 2 WHERE id = 1').run()
+    const ip = newIp()
+    expect([await put(ip), await put(ip), await put(ip)]).toEqual([200, 200, 429])
+    await env.DB.prepare('UPDATE restaurants SET like_limit_per_min = 600 WHERE id = 1').run()
+    const busy = newIp()
+    const codes = []
+    for (let i = 0; i < 30; i++) codes.push(await put(busy))
+    expect(new Set(codes)).toEqual(new Set([200]))
+  })
+
+  test('an unknown dish is a plain 404 and costs no rate-limit budget', async () => {
+    const ip = newIp()
+    for (let i = 0; i < 12; i++) expect((await call('/api/likes/9999', { method: 'PUT', ip })).status).toBe(404)
+  })
+
   test('the 11th request gets 429 with the documented body; no cookie for a refused first request', async () => {
     const ip = newIp()
     const codes: number[] = []

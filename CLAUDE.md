@@ -29,7 +29,7 @@ Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) bind
 
 ## Layout
 - `apps/web/app/` — guest menu (`pages/r/[slug]/`), landing; `apps/web/server/` — thin handlers + `utils/container.ts`
-- Likes: `LikeService`/`LikeStore` + signed device cookie in `packages/shared/src/{domain,infra}`; web has `server/api/likes/*`, `server/api/r/[slug]/likes.get.ts`, `server/middleware/01.origin-check.ts`, `components/HeartButton.vue`, `public/menu.js` (the only guest JS). Secret `DEVICE_SECRET` in `apps/web/.dev.vars`; rate limit binding `LIKE_LIMITER` in `wrangler.toml`.
+- Likes: `LikeService`/`LikeStore` + signed device cookie in `packages/shared/src/{domain,infra}`; web has `server/api/likes/*`, `server/api/r/[slug]/likes.get.ts`, `server/middleware/01.origin-check.ts`, `components/HeartButton.vue`, `public/menu.js` (the only guest JS). Secret `DEVICE_SECRET` in `apps/web/.dev.vars`; the like rate limit is `restaurants.like_limit_per_min` (owner-editable in the CMS, default 10), counted by `D1RateLimiter` in `rate_hits` (migration 0002); no rate-limit binding.
 - `apps/cms/app/` — CMS pages/layouts; `apps/cms/server/{api,middleware,utils/scoped-db.ts}` — to come
 - `packages/shared/migrations/` — D1 migrations, additive only; `packages/shared/seed.sql` — demo data (re-runnable)
 - Tests live next to what they test: `packages/shared/test/`, `apps/web/test/` (locale parity)

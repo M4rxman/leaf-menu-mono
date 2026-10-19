@@ -12,7 +12,7 @@ export class D1LikeStore implements LikeStore {
   }
 
   async findLikeable(dishId: number) {
-    return this.db.first<{ slug: string }>(`SELECT r.slug ${FROM_DISH} WHERE d.id = ? AND ${LIVE_DISH}`, dishId)
+    return this.db.first<{ slug: string, likeLimitPerMin: number }>(`SELECT r.slug, r.like_limit_per_min AS likeLimitPerMin ${FROM_DISH} WHERE d.id = ? AND ${LIVE_DISH}`, dishId)
   }
 
   async setLiked(dishId: number, deviceId: string, liked: boolean) {
@@ -38,7 +38,25 @@ export class D1LikeStore implements LikeStore {
   }
 }
 
-/** Cloudflare Rate Limiting binding (wrangler.toml [[ratelimits]]). */
-export function cfRateLimiter(binding: { limit(o: { key: string }): Promise<{ success: boolean }> }): RateLimiter {
-  return { allow: async key => (await binding.limit({ key })).success }
+/**
+ * Fixed one-minute windows in D1 (table rate_hits). Not the Cloudflare Rate Limiting binding: its limit is fixed in
+ * wrangler.toml, and ours is a per-venue setting the owner edits in the CMS.
+ * ponytail: fixed window lets a burst of 2x limit straddle a minute boundary; sliding window if that ever matters.
+ */
+export class D1RateLimiter implements RateLimiter {
+  private readonly db: Db
+  private readonly now: () => number
+
+  constructor(db: Db, now: () => number = Date.now) {
+    this.db = db
+    this.now = now
+  }
+
+  async allow(key: string, limit: number) {
+    const window = Math.floor(this.now() / 60000)
+    const row = await this.db.first<{ n: number }>(
+      'INSERT INTO rate_hits (key, window, n) VALUES (?, ?, 1) ON CONFLICT (key, window) DO UPDATE SET n = n + 1 RETURNING n', key, window)
+    if (Math.random() < 0.02) await this.db.run('DELETE FROM rate_hits WHERE window < ?', window - 5)
+    return (row?.n ?? 1) <= limit
+  }
 }
