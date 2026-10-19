@@ -2,7 +2,11 @@
   "guest": {
     "language": "Idioma",
     "categories": "Categorías",
-    "likes": "{n} me gusta | {n} me gusta",
-    "soldOut": "Agotado"
+    "likes": "Me gusta",
+    "soldOut": "Agotado",
+    "like": "Me gusta {name}",
+    "favorites": "Favoritos",
+    "noFavorites": "Aún no hay favoritos. Toca el corazón de un plato para guardarlo aquí.",
+    "backToMenu": "Volver a la carta"
   }
 }

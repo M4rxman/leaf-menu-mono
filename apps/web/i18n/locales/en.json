@@ -2,7 +2,11 @@
   "guest": {
     "language": "Language",
     "categories": "Categories",
-    "likes": "{n} like | {n} likes",
-    "soldOut": "Sold out"
+    "likes": "Likes",
+    "soldOut": "Sold out",
+    "like": "Like {name}",
+    "favorites": "Favorites",
+    "noFavorites": "No favorites yet. Tap the heart on a dish to save it here.",
+    "backToMenu": "Back to menu"
   }
 }

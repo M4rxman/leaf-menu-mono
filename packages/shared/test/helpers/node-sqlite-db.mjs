@@ -16,6 +16,7 @@ export function nodeSqliteDb(d) {
     first: async (sql, ...p) => {
       const r = d.prepare(sql).get(...p)
       return r ? { ...r } : null
-    }
+    },
+    run: async (sql, ...p) => { d.prepare(sql).run(...p) }
   }
 }

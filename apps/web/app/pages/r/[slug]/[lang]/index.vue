@@ -18,12 +18,16 @@ const menu = computed(() => (data.value?.kind === 'ok' ? data.value.menu : null)
 // Chrome language: the guest's language if we ship a file for it, else English (falls back on its own).
 if (menu.value) await useI18n().setLocale(uiLocale(menu.value.lang))
 
-useHead(() => ({ htmlAttrs: { lang: menu.value?.lang, dir: menu.value?.dir }, title: menu.value?.name }))
+useHead(() => ({
+  htmlAttrs: { lang: menu.value?.lang, dir: menu.value?.dir },
+  title: menu.value?.name,
+  script: [{ src: '/menu.js', defer: true }] // hearts only; the page itself is not hydrated
+}))
 const info = computed(() => menu.value?.info as { address?: string, tagline?: string } | undefined)
 </script>
 
 <template>
-  <main v-if="menu" class="mx-auto max-w-2xl pb-16">
+  <main v-if="menu" class="mx-auto max-w-2xl pb-16" :data-likes-url="`/api/r/${menu.slug}/likes`">
     <header class="px-4 pt-6">
       <div class="flex items-start justify-between gap-2">
         <h1 class="text-2xl font-bold" :lang="menu.nameLang">
@@ -31,6 +35,9 @@ const info = computed(() => menu.value?.info as { address?: string, tagline?: st
         </h1>
         <LangSwitch :slug="menu.slug" :langs="menu.langs" :current="menu.lang" />
       </div>
+      <NuxtLink :to="`${menuPath(menu.slug, menu.lang)}/favorites`" class="min-h-11 inline-flex items-center gap-1 text-sm font-medium">
+        <Icon name="i-lucide-heart" class="size-4" /> {{ $t('guest.favorites') }}
+      </NuxtLink>
       <p v-if="info?.tagline" class="text-ink/70">
         {{ info.tagline }}
       </p>
@@ -49,7 +56,7 @@ const info = computed(() => menu.value?.info as { address?: string, tagline?: st
         {{ c.name }}
       </h2>
       <div v-if="c.dishes.length" class="space-y-3">
-        <DishCard v-for="d in c.dishes" :key="d.id" :dish="d" />
+        <DishCard v-for="d in c.dishes" :key="d.id" :dish="d" :lang="menu.lang" />
       </div>
     </section>
   </main>

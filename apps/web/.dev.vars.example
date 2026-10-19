@@ -1,0 +1,2 @@
+# Copy to .dev.vars (git-ignored). In production: wrangler secret put DEVICE_SECRET
+DEVICE_SECRET=change-me-to-a-long-random-string

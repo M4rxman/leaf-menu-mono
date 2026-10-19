@@ -23,10 +23,12 @@ Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) bind
 - `npm run preview` / `npm run preview:cms` — build + `wrangler dev` (web http://localhost:8787, cms http://localhost:8788/admin/) with local D1/R2
 - `npm run db:migrate` / `npm run db:seed` — apply migrations / load Casa Strega demo (slug `demo`) into local D1
 - `npm test` — all workspaces (node:test + node:sqlite, no deps); `npm run lint`, `npm run typecheck`, `npm run build` likewise
+- `npm run test:worker` — builds web, then runs `apps/web/test/worker/*.test.ts` (Vitest + `@cloudflare/vitest-plugin`) against the built Worker in workerd with local D1 (real migrations + seed) and the real `LIKE_LIMITER` binding. Tests call it via `exports.default.fetch`; each test starts from the demo seed. Uses a fresh client IP per test (`cf-connecting-ip`) to avoid sharing rate-limit budgets. `npm run test:worker` always builds first; `test:worker:only` (what CI runs after its build step) tests whatever `.output/` holds, so it can be stale. The tests are type-checked by `npm run typecheck` through `apps/web/test/worker/tsconfig.json`.
 - A husky pre-commit hook runs `eslint --fix` on staged files via lint-staged
 
 ## Layout
 - `apps/web/app/` — guest menu (`pages/r/[slug]/`), landing; `apps/web/server/` — thin handlers + `utils/container.ts`
+- Likes: `LikeService`/`LikeStore` + signed device cookie in `packages/shared/src/{domain,infra}`; web has `server/api/likes/*`, `server/api/r/[slug]/likes.get.ts`, `server/middleware/01.origin-check.ts`, `components/HeartButton.vue`, `public/menu.js` (the only guest JS). Secret `DEVICE_SECRET` in `apps/web/.dev.vars`; rate limit binding `LIKE_LIMITER` in `wrangler.toml`.
 - `apps/cms/app/` — CMS pages/layouts; `apps/cms/server/{api,middleware,utils/scoped-db.ts}` — to come
 - `packages/shared/migrations/` — D1 migrations, additive only; `packages/shared/seed.sql` — demo data (re-runnable)
 - Tests live next to what they test: `packages/shared/test/`, `apps/web/test/` (locale parity)

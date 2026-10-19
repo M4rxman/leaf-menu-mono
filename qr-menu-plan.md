@@ -101,7 +101,7 @@ D1 (SQLite) · R2 (photos) · Rate Limiting binding · Cron Trigger (nightly job
 | PWA (CMS) | `@vite-pwa/nuxt` | Scoped to `/admin/`. |
 | Passwords | WebCrypto PBKDF2-SHA256 | No library. Iterations measured in M0. |
 | Lint / format | `@nuxt/eslint`, `prettier`, `husky`, `lint-staged` | §12. |
-| Tests | `vitest`, `@nuxt/test-utils`, `@cloudflare/vitest-pool-workers`, `@playwright/test`, `@axe-core/playwright` | §13. |
+| Tests | `vitest`, `@nuxt/test-utils`, `@cloudflare/vitest-plugin` (successor of the deprecated vitest-pool-workers), `@playwright/test`, `@axe-core/playwright` | §13. |
 
 ## 5. Repo layout
 
@@ -120,7 +120,8 @@ chilly-menu/
 │  │  │  ├─ routes/q/[code].get.ts                QR short link
 │  │  │  ├─ routes/r/[slug]/index.get.ts          language redirect
 │  │  │  ├─ api/likes/…                           §8
-│  │  │  ├─ middleware/                           01.origin-check.ts, 02.device.ts
+│  │  │  ├─ middleware/                           01.origin-check.ts
+│  │  │  ├─ utils/device.ts                       signed device cookie: read in the likes handlers only
 │  │  │  └─ utils/container.ts                    composition root (Cloudflare bindings)
 │  │  ├─ i18n/locales/                            en.json pt.json es.json de.json uk.json fr.json
 │  │  ├─ public/menu.js                           hearts script for guest pages (< 3 KB)
@@ -316,7 +317,7 @@ All JSON errors use one shape: `{ "error": { "code": "validation_failed", "messa
 | Route | Behaviour |
 |---|---|
 | `GET /q/{code}` | 302 → `/r/{slug}`. Unknown code → 404 page in English. |
-| `GET /r/{slug}` | 302 → `/r/{slug}/{lang}` (§7). Old slug in `slug_history` → 301 to the new slug. |
+| `GET /r/{slug}` | 302 → `/r/{slug}/{lang}` (§7). Old slug in `slug_history` → 301 to the new slug. Slugs are lower case: `/r/Demo` and `/r/DEMO/PT` → 301 to `/r/demo/pt` if that venue exists, else 404. |
 | `GET /r/{slug}/{lang}` | Menu. Same HTML for every visitor, no cookies set. |
 | `GET /r/{slug}/{lang}/d/{dishId}` | Dish detail. |
 | `GET /r/{slug}/{lang}/favorites` | This device's liked dishes. `private, no-store`. |
@@ -329,7 +330,9 @@ All JSON errors use one shape: `{ "error": { "code": "validation_failed", "messa
 | `DELETE /api/likes/{dishId}` | device cookie | `200 { "dishId": 12, "liked": false, "count": 295 }`. Idempotent. |
 | `POST /api/likes/{dishId}` | form `liked=1` or `liked=0` (no-JS fallback) | `303` back to `/r/{slug}/{lang}#dish-{dishId}` |
 
-Errors: 404 if the dish is hidden or deleted (sold-out dishes can still be liked); 429 `{ "error": { "code": "rate_limited" } }` after 10 like requests per minute per IP and dish.
+Errors: 404 if the dish is hidden or deleted (sold-out dishes can still be liked); 429 `{ "error": { "code": "rate_limited" } }` after 10 like requests per minute per IP and dish. The limit is spent before the dish is looked up, so probing ids is limited too. The no-JS `POST` never shows JSON: every outcome is a `303` back to the dish (to `/` for an unknown dish).
+
+🟡 **Open, decide before M7:** guests at one venue share one public Wi-Fi IP, so ten guests liking the same popular dish within a minute would get 429. Not measured yet. Options: raise the per-IP limit (for example 60 per minute per IP and dish) and add a per-device limit of 10 (the device id from the cookie, only when present); or keep it and watch the 429 rate on staging.
 
 ### Auth API
 | Method and path | Request | Response |
@@ -370,7 +373,7 @@ Photos are served from `GET /img/{photoKey}` (Worker reads R2, `Cache-Control: p
 ## 9. Key behaviour and security
 
 **Likes**
-- Device id: random UUID, cookie `chilly_device={uuid}.{hmac}` signed with `DEVICE_SECRET`, `HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`. Set **only on the first ♡ tap**.
+- Device id: random UUID, cookie `chilly_device={uuid}.{hmac}` signed with `DEVICE_SECRET`, `HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`. Set **only on the first ♡ tap** of a dish that can be liked (never for a 404 or 429, an unlike, or a read). `Secure` is left off when the request is plain HTTP, so a phone testing over the LAN keeps the cookie; production is always HTTPS.
 - Like = `INSERT OR IGNORE INTO likes`; unlike = `DELETE`; triggers keep `dishes.likes` right. The nightly task recomputes counts as a safety net.
 - Likes are a soft signal: no ranking across venues or paid features built on them.
 
@@ -390,7 +393,9 @@ Photos are served from `GET /img/{photoKey}` (Worker reads R2, `Cache-Control: p
 - Encode `https://<domain>/q/{qrCode}` (6 chars, base58, generated once). Error correction level Q. Downloads: SVG, 2000 px PNG, A6 PDF card with venue name.
 
 **Accessibility**
-- ♡ is a `<button aria-pressed>` inside a `<form method="post">`, labelled "Like Bufalina Panizza, 329 likes"; `aria-live="polite"` for count changes.
+- ♡ is a `<button aria-pressed>` inside a `<form method="post">` with a visually hidden label "Like Bufalina Panizza". The count sits in an `aria-live="polite"` element with a visually hidden unit ("Likes: 329") and is linked to the button with `aria-describedby`, so it is announced as "Like Bufalina Panizza, pressed, Likes: 329". The unit is a count-neutral noun, so no plural rules are needed in `menu.js`.
+- The device cookie is **never read in a middleware**: a middleware would verify the signature on every request, including every menu render. Only the likes handlers and the favorites API read it.
+- A failed like (429, 404) never shows JSON to a guest: `menu.js` keeps the current state on a non-OK response (it re-posts the form only on a network error), and `POST /api/likes/{id}` always answers `303` back to the dish.
 - 44×44 px tap targets, visible focus, 4.5:1 contrast over photos, `prefers-reduced-motion` respected.
 
 ## 10. Performance budget and caching
@@ -401,6 +406,7 @@ Photos are served from `GET /img/{photoKey}` (Worker reads R2, `Cache-Control: p
 | Guest menu HTML, 50 dishes | ≤ 60 KB gzipped | e2e test on the seed |
 | Images on first screen | ≤ 300 KB total | small (400 px) WebP in cards, `loading="lazy"` below the fold |
 | Worker CPU, menu render | p95 ≤ 10 ms | Workers Logs / Observability from the first staging deploy |
+| Worker CPU, `GET /api/r/{slug}/likes` (one extra call per menu view) | p95 ≤ 5 ms | Same dashboard. It is what keeps the menu HTML identical for every visitor, so the HTML can be cached later. |
 | Largest Contentful Paint on a mid-range phone, 4G | ≤ 2.5 s | Lighthouse CI on staging |
 
 Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes above 10 ms, cache the rendered HTML per `slug + lang` in the Workers Cache API for 60 s and purge that venue's keys on every CMS save. Because the HTML is identical for every visitor, this needs no redesign.
@@ -433,7 +439,7 @@ Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes abov
 | Layer | Tool | Must cover |
 |---|---|---|
 | Unit | Vitest | `isLang`, language resolution, money formatting, allergen bits, password hash/verify, device cookie signing |
-| Worker / DB | `@cloudflare/vitest-pool-workers` against local D1 | like triggers and idempotency; every CMS write route as owner A against venue B → 404; default-language rules; reorder; soft delete and restore; rate limits; Origin check |
+| Worker / DB | `@cloudflare/vitest-plugin` against the **built** Worker and local D1 | like triggers and idempotency; every CMS write route as owner A against venue B → 404; default-language rules; reorder; soft delete and restore; rate limits; Origin check. Lives in `apps/<app>/test/worker/`; real migrations + seed, reset before every test; each test uses its own client IP for the rate-limit binding; type-checked through `test/worker/tsconfig.json`; CI runs it right after the build. |
 | End to end | Playwright on staging | scan → menu → like → favorites → switch language; owner edits price and sees it on the menu; no-JS heart form; RTL menu screenshot |
 | Accessibility | `@axe-core/playwright` | zero serious violations on menu, dish, favorites, CMS login |
 | Smoke | `curl` after each deploy | `/q/{code}` → 302, `/r/demo/pt` → 200 |
