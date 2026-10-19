@@ -44,7 +44,7 @@ npm run test:e2e                  # from the repo root: builds web, starts the w
 - `npm run test:e2e:only -w @chilly/web` skips the build (what CI does after its build step). It tests whatever `apps/web/.output/` holds, so it can be stale.
 - One spec: `npm run test:e2e:only -w @chilly/web -- e2e/guest.spec.ts -g "heart"`. Watch it in a browser: add `--headed` (or `--ui`).
 - The server is started by `apps/web/e2e/serve.mjs` on **http://localhost:8799** (`E2E_PORT` changes it) with a throw-away database in `apps/web/.wrangler/e2e-state`: migrations, the demo seed and an extra Arabic venue (`/r/rtl`) are applied fresh on every run. Your `.wrangler/state` is never touched, and `npm run preview` can keep running.
-- A failed test keeps a trace: `npx playwright show-trace apps/web/test-results/<test>/trace.zip`. CI uploads the HTML report as an artifact when the job fails.
+- A failed test keeps a trace: `npx playwright show-trace apps/web/test-results/<test>/trace.zip`. CI runs them as the separate `e2e` job and uploads the HTML report as an artifact when it fails.
 - Likes persist in that database during a run, so each test hearts its **own** dish (the limit is per IP and dish per minute). Keep that when you add tests.
 - The Arabic screenshot (`test-results/`) is for a human to look at; there are no pixel baselines because rendering differs per OS.
 - Not covered yet: the owner CMS (it does not exist), and `/q/{code}` (issue #18, the test is marked `fixme`).
