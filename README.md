@@ -26,6 +26,7 @@ npm-workspaces monorepo: `apps/web` (guest menu Worker), `apps/cms` (owner CMS W
 | `npm run db:migrate` | Apply `packages/shared/migrations/` to the local D1 database. |
 | `npm run db:seed` | Load the Casa Strega demo (slug `demo`) into local D1. Safe to re-run. Local DB state lives in `.wrangler/state` at the repo root, shared by both apps. |
 | `npm test` | Schema tests (`node:test` + `node:sqlite`, no extra deps). |
+| `npm run test:worker` | Build web, then run the handler tests inside workerd (Vitest + `@cloudflare/vitest-plugin`): cookies, Origin check, rate limit, redirects, Favorites. Always builds first, so it takes ~1 min (`test:worker:only` in `apps/web` skips the build). |
 | `npm run lint` | ESLint (`@nuxt/eslint`) on the whole repo. |
 
 The pre-commit hook runs `eslint --fix` on staged `.js/.mjs/.ts/.vue` files and blocks the commit on errors.

@@ -41,8 +41,9 @@ export function bestLang(header: string | null | undefined, enabled: string[], f
   const wanted = (header ?? '')
     .split(',')
     .map((part) => {
-      const [tag = '', q] = part.trim().split(';q=')
-      return { base: (tag.split('-')[0] ?? '').toLowerCase(), q: q === undefined ? 1 : Number(q) }
+      const [tag = '', ...params] = part.split(';') // "en-GB ; Q=0.8" is valid (RFC 9110: optional whitespace, any case)
+      const q = params.map(p => p.trim()).find(p => /^q=/i.test(p))?.slice(2)
+      return { base: (tag.trim().split('-')[0] ?? '').toLowerCase(), q: q === undefined ? 1 : Number(q) }
     })
     .filter(x => x.base && x.base !== '*' && x.q > 0)
     .sort((a, b) => b.q - a.q)

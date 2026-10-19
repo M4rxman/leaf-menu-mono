@@ -1,0 +1,14 @@
+{
+  // Type-checks the worker tests (the Nuxt tsconfigs do not include test/). Run: tsc --noEmit -p test/worker
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types", "vite/client"]
+  },
+  "include": ["./**/*.ts", "../../vitest.config.mts"]
+}

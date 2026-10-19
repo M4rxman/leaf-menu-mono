@@ -17,18 +17,31 @@ export class MenuService {
   async enter(slug: string, acceptLanguage: string | null | undefined): Promise<MenuResult> {
     const raw = await this.reader.getMenu(slug)
     if (raw) return redirect(raw.slug, bestLang(acceptLanguage, raw.langs, raw.defaultLang), false)
-    return this.renamed(slug, undefined)
+    const renamed = await this.renamed(slug, undefined)
+    if (renamed.kind !== 'notfound' || slug === slug.toLowerCase()) return renamed
+    return this.lowerCased(slug, await this.enter(slug.toLowerCase(), acceptLanguage), undefined)
   }
 
   /** /r/{slug}/{lang}: serve it if enabled, else redirect to the default-language URL. */
   async getMenu(slug: string, requestedLang: string): Promise<MenuResult> {
     const raw = await this.reader.getMenu(slug)
-    if (!raw) return this.renamed(slug, requestedLang)
+    if (!raw) {
+      const renamed = await this.renamed(slug, requestedLang)
+      if (renamed.kind !== 'notfound' || slug === slug.toLowerCase()) return renamed
+      return this.lowerCased(slug, await this.getMenu(slug.toLowerCase(), requestedLang), requestedLang)
+    }
     // The default language is always servable, even if it is not (yet) in restaurant_langs: otherwise the redirect below loops.
     const lang = requestedLang === raw.defaultLang ? raw.defaultLang : canonicalLang(requestedLang)
     if (!lang || !servable(raw).includes(lang)) return redirect(raw.slug, raw.defaultLang, false)
     if (lang !== requestedLang) return redirect(raw.slug, lang, true) // 'PT' -> 'pt'
     return { kind: 'ok', menu: toView(raw, lang) }
+  }
+
+  /** Slugs are lower case: /r/Demo is a typo for /r/demo, so 301 there if that venue exists (else 404). */
+  private lowerCased(slug: string, found: MenuResult, langHint: string | undefined): MenuResult {
+    if (found.kind === 'notfound') return found
+    if (found.kind === 'redirect') return { ...found, permanent: true }
+    return redirect(found.menu.slug, canonicalLang(langHint ?? '') ?? undefined, true)
   }
 
   /** An old slug 301s to the current one; the language is kept if it is still a plain tag. */
