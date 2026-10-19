@@ -15,7 +15,7 @@
         "db:migrate": "npm run db:migrate -w @chilly/web",
         "db:seed": "npm run db:seed -w @chilly/web",
         "test": "npm test --workspaces --if-present",
-        "test:worker": "npm run test:worker -w @chilly/web",
+        "test:worker": "npm run test:worker -w @chilly/web && npm run test:worker -w @chilly/cms",
         "test:e2e": "npm run test:e2e -w @chilly/web",
         "lint": "npm run lint --workspaces --if-present",
         "typecheck": "npm run typecheck --workspaces --if-present",

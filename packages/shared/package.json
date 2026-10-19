@@ -12,6 +12,7 @@
     },
     "scripts": {
         "test": "node --experimental-sqlite --experimental-strip-types --test \"test/*.test.mjs\"",
+        "admin:sql": "node --experimental-strip-types scripts/admin-sql.mjs",
         "lint": "eslint ."
     },
     "devDependencies": {
