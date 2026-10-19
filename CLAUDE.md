@@ -69,3 +69,7 @@ Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) bind
 - Theme = CSS variables in `apps/web/app/assets/css/main.css` (`--brand`, `--surface`, `--text`, `--radius`). Use `bg-brand`, `text-ink`, `rounded-card`; no inline hex colors.
 - Icons: Lucide only (`i-lucide-*`). No `@nuxt/image` (needs paid Cloudflare Images); photos resized in the browser, stored in R2.
 - Guest design reference: ChoiceQR demo menu (layout/UX only, never copy their CSS, images, copy or branding) + `pdfs/` wireframes.
+
+<!-- fallow:agent-install v1 claude-import:start -->
+@AGENTS.md
+<!-- fallow:agent-install v1 claude-import:end -->
