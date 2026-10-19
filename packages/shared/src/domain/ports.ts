@@ -18,7 +18,7 @@ export interface MenuReader {
 /** Guest likes. A device is anonymous: the id only ever comes from the signed cookie. */
 export interface LikeStore {
   /** The venue slug if the dish can be liked (visible, not deleted, venue alive); sold-out is fine. */
-  findLikeable(dishId: number): Promise<{ slug: string } | null>
+  findLikeable(dishId: number): Promise<{ slug: string, likeLimitPerMin: number } | null>
   /** Idempotent. Returns the dish's like count afterwards. */
   setLiked(dishId: number, deviceId: string, liked: boolean): Promise<number>
   currentCount(dishId: number): Promise<number>
@@ -26,7 +26,7 @@ export interface LikeStore {
   likedDishIds(slug: string, deviceId: string): Promise<number[]>
 }
 
-/** True if the caller may proceed. */
+/** True if the caller may proceed: at most `limit` calls per key per minute. */
 export interface RateLimiter {
-  allow(key: string): Promise<boolean>
+  allow(key: string, limit: number): Promise<boolean>
 }

@@ -17,11 +17,13 @@ export interface LikeRequest {
   ensureDevice: () => Promise<string>
 }
 
-/** One like/unlike request, in the order that matters: validate id, rate-limit, check the dish, only then touch the cookie. */
+/** One like/unlike request, in the order that matters: validate id, check the dish, rate-limit by the venue's setting, only then touch the cookie. */
 export async function runLike(likes: LikeService, limiter: RateLimiter, req: LikeRequest): Promise<LikeOutcome> {
   const dishId = parseDishId(req.dishId)
   if (!dishId) return { ok: false, status: 404, code: 'not_found' }
-  if (!(await limiter.allow(`${req.ip}|${dishId}`))) return { ok: false, status: 429, code: 'rate_limited' }
+  const dish = await likes.likeable(dishId)
+  if (!dish) return { ok: false, status: 404, code: 'not_found' }
+  if (!(await limiter.allow(`${req.ip}|${dishId}`, dish.likeLimitPerMin))) return { ok: false, status: 429, code: 'rate_limited' }
   const result = await likes.set(dishId, () => (req.liked ? req.ensureDevice() : req.readDevice()), req.liked)
   return result ? { ok: true, result } : { ok: false, status: 404, code: 'not_found' }
 }

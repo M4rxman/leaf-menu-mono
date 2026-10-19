@@ -168,6 +168,7 @@ CREATE TABLE restaurants (
   qr_code        TEXT NOT NULL UNIQUE CHECK (length(qr_code) = 6),  -- permanent, never editable
   default_lang   TEXT NOT NULL,
   currency       TEXT NOT NULL DEFAULT 'EUR' CHECK (length(currency) = 3),
+  like_limit_per_min INTEGER NOT NULL DEFAULT 10 CHECK (like_limit_per_min BETWEEN 1 AND 600), -- migration 0002; guests share a venue Wi-Fi IP, so the owner tunes it
   info_json      TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(info_json)), -- phone, address, map_url, instagram, hours
   hero_photo_key TEXT,
   created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -330,9 +331,9 @@ All JSON errors use one shape: `{ "error": { "code": "validation_failed", "messa
 | `DELETE /api/likes/{dishId}` | device cookie | `200 { "dishId": 12, "liked": false, "count": 295 }`. Idempotent. |
 | `POST /api/likes/{dishId}` | form `liked=1` or `liked=0` (no-JS fallback) | `303` back to `/r/{slug}/{lang}#dish-{dishId}` |
 
-Errors: 404 if the dish is hidden or deleted (sold-out dishes can still be liked); 429 `{ "error": { "code": "rate_limited" } }` after 10 like requests per minute per IP and dish. The limit is spent before the dish is looked up, so probing ids is limited too. The no-JS `POST` never shows JSON: every outcome is a `303` back to the dish (to `/` for an unknown dish).
+Errors: 404 if the dish is hidden or deleted (sold-out dishes can still be liked); 429 `{ "error": { "code": "rate_limited" } }` after `restaurants.like_limit_per_min` like requests per minute per IP and dish (default 10, allowed 1 to 600, **owner-editable in the CMS venue settings**, counted in D1 table `rate_hits`; a Cloudflare Rate Limiting binding cannot do this because its limit is fixed in `wrangler.toml`). An unknown or hidden dish is a plain 404 that costs no budget (it changes nothing). The no-JS `POST` never shows JSON: every outcome is a `303` back to the dish (to `/` for an unknown dish).
 
-🟡 **Open, decide before M7:** guests at one venue share one public Wi-Fi IP, so ten guests liking the same popular dish within a minute would get 429. Not measured yet. Options: raise the per-IP limit (for example 60 per minute per IP and dish) and add a per-device limit of 10 (the device id from the cookie, only when present); or keep it and watch the 429 rate on staging.
+✅ Shared venue Wi-Fi: guests at one venue share one public IP, so the owner can raise `like_limit_per_min` (CMS, M5) instead of us guessing a number. 🟡 Still open: a per-device limit on top (device id from the cookie, only when present).
 
 ### Auth API
 | Method and path | Request | Response |
@@ -347,8 +348,8 @@ The owner's venue always comes from the session; `scopedDb(user, venueParam)` ig
 
 | Method and path | Request (shape) | Response |
 |---|---|---|
-| `GET /api/admin/venue` | | `{ id, slug, qrCode, currency, defaultLang, langs: ["pt","en"], info: {...}, i18n: { pt: { name, tagline, about, hoursText } } }` |
-| `PATCH /api/admin/venue` | `{ slug?, currency?, info?, i18n?: { [lang]: {...} } }` | updated venue; slug change writes `slug_history` |
+| `GET /api/admin/venue` | | `{ id, slug, qrCode, currency, likeLimitPerMin, defaultLang, langs: ["pt","en"], info: {...}, i18n: { pt: { name, tagline, about, hoursText } } }` |
+| `PATCH /api/admin/venue` | `{ slug?, currency?, likeLimitPerMin? (1 to 600, Zod + SQL CHECK), info?, i18n?: { [lang]: {...} } }` | updated venue; slug change writes `slug_history` |
 | `PUT /api/admin/venue/languages` | `{ "langs": ["pt","en","uk"], "defaultLang": "pt" }` | `200 { langs, defaultLang }`; `422` if a tag isn't in the pool or the default isn't in `langs` |
 | `GET /api/admin/translations/missing` | | `{ "en": 4, "uk": 11 }` |
 | `GET /api/admin/categories` | | tree with `i18n` per category |
@@ -426,7 +427,7 @@ Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes abov
 | staging | `chilly-menu-staging` | `chilly-staging` | `chilly-photos-staging` | push to `main` |
 | production | `chilly-menu` | `chilly-prod` | `chilly-photos` | git tag `v*` (manual) |
 
-**Secrets** (`wrangler secret put`): `DEVICE_SECRET`, `SESSION_PEPPER`. **Bindings** in `wrangler.toml`: `DB`, `PHOTOS`, `LIKE_LIMITER`, `LOGIN_LIMITER`, Cron `0 3 * * *` (nightly task). Never commit secrets; `.dev.vars` is git-ignored.
+**Secrets** (`wrangler secret put`): `DEVICE_SECRET`, `SESSION_PEPPER`. **Bindings** in `wrangler.toml`: `DB`, `PHOTOS`, `LOGIN_LIMITER`, Cron `0 3 * * *` (nightly task). Never commit secrets; `.dev.vars` is git-ignored.
 
 **CI** (`.github/workflows/ci.yml`, on every PR): install → `eslint` → `nuxi typecheck` → unit and worker tests → build → bundle-size check → e2e on a preview. Deploy jobs run `wrangler d1 migrations apply --remote` **before** `wrangler deploy`. Migrations are additive only; a column is dropped in a later release once no deployed code reads it. `0001_init.sql` may be edited only while `wrangler d1 migrations list --remote` shows it unapplied on both staging and production.
 

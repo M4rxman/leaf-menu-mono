@@ -9,7 +9,7 @@ import { nodeSqliteDb, seededSqlite } from './helpers/node-sqlite-db.mjs'
 function setup({ allow = true } = {}) {
   const sqlite = seededSqlite()
   const events = []
-  const limiter = { allow: async (key) => { events.push(['limit', key]); return typeof allow === 'function' ? allow(key) : allow } }
+  const limiter = { allow: async (key, limit) => { events.push(['limit', key, limit]); return typeof allow === 'function' ? allow(key, limit) : allow } }
   const likes = new LikeService(new D1LikeStore(nodeSqliteDb(sqlite)))
   const req = (over = {}) => ({
     dishId: '7', ip: '203.0.113.9', liked: true,
@@ -25,7 +25,7 @@ test('a real like: rate-limit check, then the cookie is issued, then the like is
   const t = setup()
   const out = await t.run()
   assert.deepEqual(out, { ok: true, result: { slug: 'demo', dishId: 7, liked: true, count: 1 } })
-  assert.deepEqual(t.events, [['limit', '203.0.113.9|7'], ['ensure']])
+  assert.deepEqual(t.events, [['limit', '203.0.113.9|7', 10], ['ensure']])
 })
 
 test('no cookie is issued when the dish is unknown, hidden, deleted or in a hidden category', async () => {
@@ -35,13 +35,13 @@ test('no cookie is issued when the dish is unknown, hidden, deleted or in a hidd
   for (const dishId of ['9999', '1', '2', '4'])
     assert.deepEqual(await t.run({ dishId }), { ok: false, status: 404, code: 'not_found' }, dishId)
   assert.ok(!t.events.some(e => e[0] === 'ensure'), 'ensureDevice must not run for a dish that cannot be liked')
-  assert.equal(t.events.filter(e => e[0] === 'limit').length, 4) // the budget is spent either way: probing is limited too
+  assert.ok(!t.events.some(e => e[0] === 'limit'), 'an unlikeable dish costs no rate-limit budget') // a read only; the likes cannot change
 })
 
 test('no cookie and no write when the request is rate limited', async () => {
   const t = setup({ allow: false })
   assert.deepEqual(await t.run(), { ok: false, status: 429, code: 'rate_limited' })
-  assert.deepEqual(t.events, [['limit', '203.0.113.9|7']])
+  assert.deepEqual(t.events, [['limit', '203.0.113.9|7', 10]])
   assert.equal(t.count(7), 0)
 })
 
@@ -58,7 +58,7 @@ test('unlike reads the cookie but never issues one; without a cookie it is a no-
   t.events.length = 0
   const out = await t.run({ liked: false })
   assert.deepEqual(out.result, { slug: 'demo', dishId: 7, liked: false, count: 0 })
-  assert.deepEqual(t.events, [['limit', '203.0.113.9|7'], ['read']])
+  assert.deepEqual(t.events, [['limit', '203.0.113.9|7', 10], ['read']])
 
   await t.run() // like again
   const none = await t.run({ liked: false, readDevice: async () => null })
@@ -69,19 +69,26 @@ test('the limiter key is per IP and per dish; IPv6 addresses cannot collide with
   const t = setup()
   await t.run({ ip: '2001:db8::1', dishId: '7' })
   await t.run({ ip: '2001:db8::1', dishId: '8' })
-  await t.run({ ip: '2001:db8:', dishId: '17' })
+  await t.run({ ip: '2001:db8::', dishId: '1' })
   const keys = t.events.filter(e => e[0] === 'limit').map(e => e[1])
   assert.equal(new Set(keys).size, 3)
 })
 
 test('the 11th request is the first one refused when the limit is 10 per key', async () => {
   const seen = new Map()
-  const t = setup({ allow: (k) => { seen.set(k, (seen.get(k) ?? 0) + 1); return seen.get(k) <= 10 } })
+  const t = setup({ allow: (k, limit) => { seen.set(k, (seen.get(k) ?? 0) + 1); return seen.get(k) <= limit } })
   const codes = []
   for (let i = 0; i < 12; i++) codes.push((await t.run()).ok ? 200 : 429)
   assert.deepEqual(codes, [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 429, 429])
   assert.equal((await t.run({ dishId: '8' })).ok, true) // another dish has its own budget
   assert.equal((await t.run({ ip: '198.51.100.1' })).ok, true) // so does another IP
+})
+
+test("the limit comes from the venue's setting, not from code", async () => {
+  const t = setup()
+  t.sqlite.exec('UPDATE restaurants SET like_limit_per_min = 3 WHERE id = 1')
+  await t.run()
+  assert.deepEqual(t.events[0], ['limit', '203.0.113.9|7', 3])
 })
 
 test('a failing limiter binding surfaces as an error, not as "allowed"', async () => {

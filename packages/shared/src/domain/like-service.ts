@@ -26,6 +26,11 @@ export class LikeService {
     return { slug: dish.slug, dishId, liked, count: await this.store.setLiked(dishId, deviceId, liked) }
   }
 
+  /** The venue slug and like limit if the dish can be liked, else null. */
+  likeable(dishId: number) {
+    return this.store.findLikeable(dishId)
+  }
+
   /** Menu slug of a likeable dish (for redirects after a failed form post). */
   async slugOf(dishId: number): Promise<string | null> {
     return (await this.store.findLikeable(dishId))?.slug ?? null
