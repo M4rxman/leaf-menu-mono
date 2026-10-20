@@ -36,6 +36,9 @@ jobs:
       - name: Worker tests (built worker in workerd, local D1)
         run: npm run test:worker:only -w @chilly/web
 
+      - name: CMS worker tests
+        run: npm run test:worker:only -w @chilly/cms
+
   e2e:
     runs-on: ubuntu-latest
     steps:

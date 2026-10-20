@@ -7,8 +7,10 @@
         "build": "nuxt build",
         "preview": "nuxt build && wrangler dev --port 8788 --persist-to ../../.wrangler/state",
         "postinstall": "nuxt prepare",
+        "test:worker": "nuxt build && vitest run",
+        "test:worker:only": "vitest run",
         "lint": "eslint .",
-        "typecheck": "nuxt typecheck"
+        "typecheck": "nuxt typecheck && tsc --noEmit -p test/worker/tsconfig.json"
     },
     "dependencies": {
         "@chilly/shared": "*",
@@ -21,9 +23,12 @@
         "vue-router": "^5.4.0"
     },
     "devDependencies": {
+        "@cloudflare/vitest-plugin": "^1.4.3",
+        "@cloudflare/workers-types": "^5.20261015.1",
         "@nuxt/eslint": "^1.17.0",
         "eslint": "^10.12.0",
         "typescript": "^6.0.3",
+        "vitest": "^4.1.0",
         "vue-tsc": "^3.3.13",
         "wrangler": "^4.151.0"
     }
