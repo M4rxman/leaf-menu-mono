@@ -18,6 +18,7 @@ node_modules
 .dev.vars
 .claude/settings.local.json
 .obsidian
+apps/cms/.dev.vars
 # Playwright
 test-results
 playwright-report

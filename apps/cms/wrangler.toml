@@ -2,6 +2,8 @@ name = "chilly-cms"
 main = ".output/server/index.mjs"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
+# Path route on the same host as web: more specific than web's custom domain, so /admin/* (pages and /admin/api) hits this Worker.
+routes = [{ pattern = "staging.chillymenu.party/admin/*", zone_name = "chillymenu.party" }]
 assets = { directory = ".output/public", binding = "ASSETS" }
 
 # Same database and bucket as apps/web (one D1, one R2 for all venues).

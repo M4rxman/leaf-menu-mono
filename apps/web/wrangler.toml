@@ -2,6 +2,8 @@ name = "chilly-menu"
 main = ".output/server/index.mjs"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
+# Staging host; the zone must be on this Cloudflare account. custom_domain creates the DNS record + certificate.
+routes = [{ pattern = "staging.chillymenu.party", custom_domain = true }]
 assets = { directory = ".output/public", binding = "ASSETS" }
 
 [[d1_databases]]
