@@ -193,10 +193,28 @@ describe('POST /auth/password', () => {
     expect(await errorCode(blocked)).toBe('rate_limited')
   })
 
+  test('the new password must differ from the current one -> 422 password_unchanged', async () => {
+    const res = await change(await signIn('owner@x.pt'), { current: PASSWORD, next: PASSWORD })
+    expect(res.status).toBe(422)
+    expect(await errorCode(res)).toBe('password_unchanged')
+  })
+
   test('a cross-origin change is refused', async () => {
     const cookie = await signIn('owner@x.pt')
     const res = await call('/auth/password', { method: 'POST', cookie, origin: 'https://evil.example', body: { current: PASSWORD, next: 'a-brand-new-password' } })
     expect(res.status).toBe(403)
+  })
+})
+
+describe('auth responses are never cached', () => {
+  test.each([
+    ['a 401 from /auth/me', () => call('/auth/me')],
+    ['a successful login', () => login('admin@x.pt')],
+    ['a refused login', () => login('admin@x.pt', 'wrong password')],
+    ['a 403 from the origin check', () => call('/auth/logout', { method: 'POST', origin: 'https://evil.example' })],
+    ['an unknown API route', () => call('/nothing', { method: 'POST' })]
+  ])('%s carries Cache-Control: no-store', async (_, send) => {
+    expect((await send()).headers.get('cache-control')).toBe('no-store')
   })
 })
 

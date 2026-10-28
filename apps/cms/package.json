@@ -7,6 +7,7 @@
         "build": "nuxt build",
         "preview": "nuxt build && wrangler dev --port 8788 --persist-to ../../.wrangler/state",
         "postinstall": "nuxt prepare",
+        "test": "node --experimental-sqlite --experimental-strip-types --test \"test/node/*.test.mjs\"",
         "test:worker": "nuxt build && vitest run",
         "test:worker:only": "vitest run",
         "lint": "eslint .",

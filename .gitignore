@@ -22,3 +22,4 @@ apps/cms/.dev.vars
 # Playwright
 test-results
 playwright-report
+coverage
