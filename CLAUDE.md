@@ -19,6 +19,7 @@ Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) bind
 - Add dependencies to the workspace that uses them (`npm i <pkg> -w @chilly/web`); only husky/lint-staged live at the root.
 
 ## Commands (run from the repo root)
+- **Windows: run `npm`/`npx`/`node` scripts with the PowerShell tool, not Bash.** In Git Bash `npm` is not on PATH (`'npm' is not recognized` from the workspace scripts, or `npx` failing on `"node"`). Use Bash only for git, `gh` and POSIX text tools.
 - `npm run dev` / `npm run dev:cms` — Nuxt dev servers (web :3000, cms :3001; no D1 bindings, use `preview` for anything touching the DB)
 - `npm run preview` / `npm run preview:cms` — build + `wrangler dev` (web http://localhost:8787, cms http://localhost:8788/admin/) with local D1/R2
 - `npm run db:migrate` / `npm run db:seed` — apply migrations / load Casa Strega demo (slug `demo`) into local D1
@@ -69,3 +70,7 @@ Nuxt 4 (Vue) on Cloudflare Workers (Nitro `cloudflare-module`), D1 (SQLite) bind
 - Theme = CSS variables in `apps/web/app/assets/css/main.css` (`--brand`, `--surface`, `--text`, `--radius`). Use `bg-brand`, `text-ink`, `rounded-card`; no inline hex colors.
 - Icons: Lucide only (`i-lucide-*`). No `@nuxt/image` (needs paid Cloudflare Images); photos resized in the browser, stored in R2.
 - Guest design reference: ChoiceQR demo menu (layout/UX only, never copy their CSS, images, copy or branding) + `pdfs/` wireframes.
+
+<!-- fallow:agent-install v1 claude-import:start -->
+@AGENTS.md
+<!-- fallow:agent-install v1 claude-import:end -->

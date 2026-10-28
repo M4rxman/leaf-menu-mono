@@ -26,6 +26,41 @@ export interface LikeStore {
   likedDishIds(slug: string, deviceId: string): Promise<number[]>
 }
 
+export type Role = 'admin' | 'owner'
+
+export interface AuthUser {
+  id: number
+  email: string
+  role: Role
+  /** null for the super-admin. */
+  restaurantId: number | null
+  mustChangePassword: boolean
+}
+
+/** CMS accounts, sessions and login throttling. Session ids are the SHA-256 of the cookie token. */
+export interface AuthStore {
+  /** With the password hash, for login only. */
+  findByEmail(email: string): Promise<(AuthUser & { passwordHash: string }) | null>
+  findById(id: number): Promise<(AuthUser & { passwordHash: string }) | null>
+  createSession(sessionId: string, userId: number, expiresAt: number): Promise<void>
+  /** Unexpired sessions only. */
+  sessionUser(sessionId: string, now: number): Promise<{ user: AuthUser, expiresAt: number } | null>
+  extendSession(sessionId: string, expiresAt: number): Promise<void>
+  deleteSession(sessionId: string): Promise<void>
+  /** All of a user's sessions, except `keep` if given. */
+  deleteSessions(userId: number, keep?: string): Promise<void>
+  setPassword(userId: number, passwordHash: string, mustChange: boolean): Promise<void>
+  /** Attempts are recorded before they are counted, so parallel requests all see each other. */
+  failureCount(key: string, since: number): Promise<number>
+  recordFailure(key: string, at: number): Promise<void>
+  /** Takes back one recorded attempt (the one that turned out to be a success). */
+  forgetFailure(key: string, at: number): Promise<void>
+  clearFailures(key: string): Promise<void>
+  /** Deletes sessions that expired at or before `before` (unix seconds). */
+  purgeSessions(before: number): Promise<void>
+  purgeFailures(before: number): Promise<void>
+}
+
 /** True if the caller may proceed: at most `limit` calls per key per minute. */
 export interface RateLimiter {
   allow(key: string, limit: number): Promise<boolean>

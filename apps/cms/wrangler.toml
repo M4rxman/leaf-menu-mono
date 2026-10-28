@@ -2,16 +2,20 @@ name = "chilly-cms"
 main = ".output/server/index.mjs"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
+# Path route on the same host as web: more specific than web's custom domain, so /admin/* (pages and /admin/api) hits this Worker.
+routes = [{ pattern = "staging.chillymenu.party/admin/*", zone_name = "chillymenu.party" }]
 assets = { directory = ".output/public", binding = "ASSETS" }
 
 # Same database and bucket as apps/web (one D1, one R2 for all venues).
 [[d1_databases]]
 binding = "DB"
-database_name = "chilly-menu"
-# Placeholder: use the same id as apps/web/wrangler.toml
-database_id = "00000000-0000-0000-0000-000000000000"
+database_name = "chilly-menu-eu"
+database_id = "8e739f6a-6caf-4115-a370-71b680aeef3b"
 migrations_dir = "../../packages/shared/migrations"
+
+# Secret (wrangler secret put PASSWORD_PEPPER; local: apps/cms/.dev.vars): PASSWORD_PEPPER. Keep a copy in the
+# password manager: without it no stored password verifies (an admin reset still works).
 
 [[r2_buckets]]
 binding = "PHOTOS"
-bucket_name = "chilly-photos"
+bucket_name = "chilly-photos-staging"

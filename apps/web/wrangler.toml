@@ -2,16 +2,17 @@ name = "chilly-menu"
 main = ".output/server/index.mjs"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
+# Staging host; the zone must be on this Cloudflare account. custom_domain creates the DNS record + certificate.
+routes = [{ pattern = "staging.chillymenu.party", custom_domain = true }]
 assets = { directory = ".output/public", binding = "ASSETS" }
 
 [[d1_databases]]
 binding = "DB"
-database_name = "chilly-menu"
-# Placeholder: replace with the id from `npx wrangler d1 create chilly-menu --location weur`
-database_id = "00000000-0000-0000-0000-000000000000"
+database_name = "chilly-menu-eu"
+database_id = "8e739f6a-6caf-4115-a370-71b680aeef3b"
 migrations_dir = "../../packages/shared/migrations"
 
 [[r2_buckets]]
 binding = "PHOTOS"
-bucket_name = "chilly-photos"
+bucket_name = "chilly-photos-staging"
 

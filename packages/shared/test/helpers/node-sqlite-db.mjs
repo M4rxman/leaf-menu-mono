@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 export function seededSqlite() {
   const d = new DatabaseSync(':memory:')
   d.exec('PRAGMA foreign_keys = ON')
-  for (const f of ['migrations/0001_init.sql', 'migrations/0002_like_limit.sql', 'seed.sql'])
+  for (const f of ['migrations/0001_init.sql', 'migrations/0002_like_limit.sql', 'migrations/0003_auth.sql', 'seed.sql'])
     d.exec(readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8'))
   return d
 }
