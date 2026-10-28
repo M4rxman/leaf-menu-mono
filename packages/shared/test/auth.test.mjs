@@ -193,3 +193,87 @@ test('changePassword: the new password must differ from the current one, and the
   assert.equal((await auth.authenticate(token)).mustChangePassword, true) // nothing changed
   assert.ok((await auth.login('owner@x.pt', PASSWORD, '1.1.1.2')).ok)
 })
+
+// --- killed-mutant tests (Stryker survivors that mattered) ---
+
+test('login: tokens are 256-bit cookie-safe base64url and never repeat', async () => {
+  const { auth } = await setup()
+  const seen = new Set()
+  for (let i = 0; i < 40; i++) {
+    const { token } = await auth.login('admin@x.pt', PASSWORD, `2.2.2.${i}`)
+    assert.match(token, /^[A-Za-z0-9_-]{43}$/) // no + / = (not cookie/URL safe), exactly 32 bytes
+    seen.add(token)
+  }
+  assert.equal(seen.size, 40)
+})
+
+test('the default clock is real unix seconds', async () => {
+  const { store, sqlite } = await setup()
+  await new AuthService(store, PEPPER).login('admin@x.pt', PASSWORD, '1.1.1.1')
+  const expires = sqlite.prepare('SELECT expires_at FROM sessions').get().expires_at
+  assert.ok(Math.abs(expires - (Date.now() / 1000 + 14 * 86400)) < 10, String(expires))
+})
+
+test('login: failures still count 14 minutes later (the window is 15 minutes, not seconds)', async () => {
+  const { auth, advance } = await setup()
+  for (let i = 0; i < 5; i++) await auth.login('admin@x.pt', 'wrong', `9.9.9.${i}`)
+  advance(14 * 60)
+  assert.equal((await auth.login('admin@x.pt', PASSWORD, '8.8.8.8')).reason, 'throttled')
+})
+
+test('login: case and padding of the email do not buy extra attempts', async () => {
+  const { auth } = await setup()
+  for (const [i, email] of ['ADMIN@x.pt', ' admin@x.pt', 'Admin@x.pt', 'admin@X.PT ', 'admin@x.pt'].entries())
+    await auth.login(email, 'wrong', `9.9.9.${i}`)
+  assert.equal((await auth.login('admin@x.pt', PASSWORD, '8.8.8.8')).reason, 'throttled')
+})
+
+test('login: with no address the email throttle still applies', async () => {
+  const { auth } = await setup()
+  for (let i = 0; i < 5; i++) await auth.login('admin@x.pt', 'wrong', '')
+  assert.equal((await auth.login('admin@x.pt', PASSWORD, '')).reason, 'throttled')
+})
+
+test('sessions: the new expiry is written at most once a day', async () => {
+  const { auth, advance, sqlite } = await setup()
+  const { token } = await auth.login('admin@x.pt', PASSWORD, '1.1.1.1')
+  const expiry = () => sqlite.prepare('SELECT expires_at FROM sessions').get().expires_at
+  const first = expiry()
+  advance(86400)
+  await auth.authenticate(token)
+  assert.equal(expiry(), first) // exactly a day: not yet
+  advance(1)
+  await auth.authenticate(token)
+  assert.equal(expiry(), first + 86401)
+})
+
+test('changePassword and login draw on one failure budget per email, whatever its case', async () => {
+  const { auth } = await setup()
+  const token = (await auth.login('owner@x.pt', PASSWORD, '1.1.1.1')).token
+  const user = await auth.authenticate(token) // stored as "Owner@x.pt"
+  for (let i = 0; i < 3; i++) await auth.login('owner@x.pt', 'wrong', `3.3.3.${i}`)
+  assert.equal(await auth.changePassword(user, token, 'wrong', 'a-brand-new-password'), 'wrong_current')
+  assert.equal(await auth.changePassword(user, token, 'wrong', 'a-brand-new-password'), 'wrong_current')
+  assert.equal(await auth.changePassword(user, token, 'wrong', 'a-brand-new-password'), 'throttled') // 3 + 3 > 5
+})
+
+test('changePassword: 12 characters are enough, 11 are not; length counts characters, not UTF-16 units', async () => {
+  const { auth } = await setup()
+  const token = (await auth.login('owner@x.pt', PASSWORD, '1.1.1.1')).token
+  const user = await auth.authenticate(token)
+  assert.equal(await auth.changePassword(user, token, PASSWORD, 'x'.repeat(11)), 'too_short')
+  assert.equal(await auth.changePassword(user, token, PASSWORD, '🔑'.repeat(11)), 'too_short')
+  assert.equal(await auth.changePassword(user, token, PASSWORD, '🔑'.repeat(12)), 'ok')
+})
+
+test('verifyPassword: a stored hash with bytes appended or removed never verifies; 1 iteration works, 0 does not', async () => {
+  const stored = await hashPassword(PASSWORD, PEPPER, ITER)
+  const [scheme, iter, salt, hash] = stored.split('$')
+  const raw = Uint8Array.from(atob(hash), c => c.charCodeAt(0))
+  const b64 = a => btoa(String.fromCharCode(...a))
+  assert.ok(await verifyPassword(PASSWORD, PEPPER, stored))
+  assert.equal(await verifyPassword(PASSWORD, PEPPER, [scheme, iter, salt, b64(raw.slice(0, 16))].join('$')), false)
+  assert.equal(await verifyPassword(PASSWORD, PEPPER, [scheme, iter, salt, b64(new Uint8Array([...raw, 0, 0]))].join('$')), false)
+  assert.ok(await verifyPassword(PASSWORD, PEPPER, await hashPassword(PASSWORD, PEPPER, 1)))
+  assert.equal(await verifyPassword(PASSWORD, PEPPER, [scheme, '0', salt, hash].join('$')), false)
+})
