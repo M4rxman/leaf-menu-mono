@@ -1,39 +1,127 @@
-name: Deploy staging
+name: Deploy
 on:
   push:
-    branches: [main]
+    branches: [main]   # -> staging, once CI for that commit is green
+    tags: ['v*']       # -> production, once that commit has deployed to staging; a required reviewer approves
+  workflow_dispatch:   # -> production for the selected ref (same staging gate and approval as a tag)
 
-# Needs repo secrets CLOUDFLARE_API_TOKEN (Edit Cloudflare Workers template + D1 Edit) and CLOUDFLARE_ACCOUNT_ID.
-# ponytail: staging only; add a `v*` tag job for production once its D1/R2/Workers exist.
-concurrency: deploy-staging
+# Environments (Settings -> Environments). Same secret names, different values per environment:
+#   staging     no protection rules
+#   production  required reviewers (this is the production approval gate); restrict deployment branches/tags to `main` and `v*`
+#   CLOUDFLARE_API_TOKEN   environment secret. Cloudflare "Edit Cloudflare Workers" template + D1 Edit, scoped to the
+#                          zone/resources of that environment (ideally a separate token per environment).
+#   CLOUDFLARE_ACCOUNT_ID  environment secret.
+#   DEVICE_SECRET          Worker secret on chilly-menu(-production), NOT a GitHub secret (the app reads it at runtime):
+#                          cd apps/web && npx wrangler secret put DEVICE_SECRET --env <staging|production>
+#   PASSWORD_PEPPER        Worker secret on chilly-cms(-production):
+#                          cd apps/cms && npx wrangler secret put PASSWORD_PEPPER --env <staging|production>
+#                          Use a different random value per environment and keep a copy in the password manager.
+#
+# One-time production setup (staging already exists):
+#   1. npx wrangler d1 create chilly-menu-prod-eu --location weur      # paste database_id into BOTH wrangler.toml
+#                                                                       #   [env.production] blocks (REPLACE_WITH_PRODUCTION_D1_ID)
+#   2. npx wrangler r2 bucket create chilly-photos-production
+#   3. The chillymenu.party zone must be on this Cloudflare account (staging already needs it); apex is a custom domain.
+#   4. Create the GitHub Environments + secrets above, and put both Worker secrets (they need the Workers to exist, so
+#      deploy once first; the first tag run fails the smoke test until DEVICE_SECRET/PASSWORD_PEPPER are set, then re-run).
+#   5. The smoke test needs the demo venue in production (the landing links to it):
+#      cd apps/web && npx wrangler d1 migrations apply DB --remote --env production
+#                  && npx wrangler d1 execute DB --remote --env production --file ../../packages/shared/seed.sql
+#   6. Release: git tag v1.0.0 && git push origin v1.0.0, then approve the run in the Actions tab.
+#
+# Rollback (production):
+#   Code: cd apps/web && npx wrangler rollback --env production   (same in apps/cms; lists versions to pick from).
+#   Data: the run prints a Time Travel bookmark taken before the migration. Restore with
+#         cd apps/web && npx wrangler d1 time-travel restore DB --env production --bookmark <bookmark>
+#         (restores the WHOLE database, including guest likes made since; migrations are additive, so usually a code
+#         rollback is enough). Time Travel keeps 30 days.
 
 permissions:
   contents: read
+  actions: read  # gh run list / watch
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
 
 jobs:
-  deploy:
+  target:
     runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.t.outputs.env }}
+      url: ${{ steps.t.outputs.url }}
+    steps:
+      - id: t
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ]; then
+            echo "env=staging" >> "$GITHUB_OUTPUT"
+            echo "url=https://staging.chillymenu.party" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=production" >> "$GITHUB_OUTPUT"
+            echo "url=https://chillymenu.party" >> "$GITHUB_OUTPUT"
+          fi
+      # Production promotes a commit that already passed staging: the push-to-main Deploy run for this SHA must be green.
+      # Checked here, before the approval prompt, so a reviewer is never asked to approve an unstaged commit.
+      - name: Require a green staging deploy of this commit
+        if: steps.t.outputs.env == 'production'
+        run: |
+          n=$(gh run list --workflow deploy.yml --event push --branch main --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
+          [ "$n" -ge 1 ] || { echo "::error::$GITHUB_SHA has no successful staging deploy on main; merge it and wait for staging first"; exit 1; }
+
+  deploy:
+    needs: target
+    runs-on: ubuntu-latest
+    environment: ${{ needs.target.outputs.env }}
+    concurrency:
+      group: deploy-${{ needs.target.outputs.env }}
+      cancel-in-progress: false
     env:
+      TARGET: ${{ needs.target.outputs.env }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+
+      # CI is a separate workflow (its `test` and `e2e` jobs are required checks), so wait for its run on this commit.
+      - name: Wait for green CI on this commit
+        if: env.TARGET == 'staging'
+        run: |
+          for _ in $(seq 30); do
+            id=$(gh run list --workflow ci.yml --event push --branch main --commit "$GITHUB_SHA" --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$id" ] && break
+            sleep 10
+          done
+          [ -n "$id" ] || { echo "::error::no CI run found for $GITHUB_SHA"; exit 1; }
+          gh run watch "$id" --exit-status --interval 20
+
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Migrate D1 (before deploy; migrations are additive)
-        run: npx wrangler d1 migrations apply DB --remote
+
+      - name: Record D1 Time Travel bookmark (rollback point, before the migration)
+        if: env.TARGET == 'production'
         working-directory: apps/web
-      - run: npx wrangler deploy
-        working-directory: apps/web
-      - run: npx wrangler deploy
-        working-directory: apps/cms
-      - name: Smoke test
         run: |
-          curl -fsS -o /dev/null https://staging.chillymenu.party/r/demo/pt
-          curl -fsS -o /dev/null https://staging.chillymenu.party/admin/
+          {
+            echo "### D1 Time Travel bookmark before migration"
+            echo '```'
+            npx wrangler d1 time-travel info DB --env production
+            echo '```'
+            echo "Restore: \`npx wrangler d1 time-travel restore DB --env production --bookmark <bookmark>\` (in apps/web)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Migrate D1 (before deploy; migrations are additive)
+        working-directory: apps/web
+        run: npx wrangler d1 migrations apply DB --remote --env "$TARGET"
+      - run: npx wrangler deploy --env "$TARGET"
+        working-directory: apps/web
+      - run: npx wrangler deploy --env "$TARGET"
+        working-directory: apps/cms
+
+      - name: Smoke test
+        run: bash .github/scripts/smoke.sh "${{ needs.target.outputs.url }}"
