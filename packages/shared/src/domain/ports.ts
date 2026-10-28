@@ -56,6 +56,8 @@ export interface AuthStore {
   /** Takes back one recorded attempt (the one that turned out to be a success). */
   forgetFailure(key: string, at: number): Promise<void>
   clearFailures(key: string): Promise<void>
+  /** Deletes sessions that expired at or before `before` (unix seconds). */
+  purgeSessions(before: number): Promise<void>
   purgeFailures(before: number): Promise<void>
 }
 

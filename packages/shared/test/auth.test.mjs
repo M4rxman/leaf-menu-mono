@@ -172,3 +172,24 @@ test('changePassword: guessing the current password is throttled like a login', 
   for (let i = 0; i < 5; i++) assert.equal(await auth.changePassword(user, token, `guess ${i}`, 'a-brand-new-password'), 'wrong_current')
   assert.equal(await auth.changePassword(user, token, PASSWORD, 'a-brand-new-password'), 'throttled')
 })
+
+test('sessions: expired rows are deleted on the next login, live ones (also other users) stay', async () => {
+  const { auth, advance, sqlite } = await setup()
+  await auth.login('admin@x.pt', PASSWORD, '1.1.1.1') // will expire
+  advance(10 * 86400)
+  await auth.login('owner@x.pt', PASSWORD, '1.1.1.2') // still alive when the next login happens
+  advance(5 * 86400) // admin session is now 15 days old (> 14); owner's is 5 days old
+  await auth.login('admin@x.pt', PASSWORD, '1.1.1.3')
+  const owners = sqlite.prepare('SELECT user_id FROM sessions ORDER BY user_id').all().map(r => r.user_id)
+  assert.deepEqual(owners, [1, 2]) // the first admin session is gone, the new admin and the owner session remain
+  assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 2)
+})
+
+test('changePassword: the new password must differ from the current one, and the old password still works after the refusal', async () => {
+  const { auth } = await setup()
+  const token = (await auth.login('owner@x.pt', PASSWORD, '1.1.1.1')).token
+  const user = await auth.authenticate(token)
+  assert.equal(await auth.changePassword(user, token, PASSWORD, PASSWORD), 'same_password')
+  assert.equal((await auth.authenticate(token)).mustChangePassword, true) // nothing changed
+  assert.ok((await auth.login('owner@x.pt', PASSWORD, '1.1.1.2')).ok)
+})

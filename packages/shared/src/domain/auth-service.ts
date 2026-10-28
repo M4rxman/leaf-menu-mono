@@ -16,7 +16,7 @@ export type LoginResult =
   | { ok: true, token: string, maxAge: number, user: AuthUser }
   | { ok: false, reason: 'invalid' | 'throttled' }
 
-export type PasswordResult = 'ok' | 'wrong_current' | 'too_short' | 'throttled'
+export type PasswordResult = 'ok' | 'wrong_current' | 'too_short' | 'same_password' | 'throttled'
 
 export class AuthService {
   private readonly store: AuthStore
@@ -47,6 +47,7 @@ export class AuthService {
     const emailKey = `email:${email.trim().toLowerCase()}`
     const ipKey = ip ? `ip:${ip}` : null // no address (never on Workers): skip the key, a shared '' key would lock everyone out
     if (await this.overLimit(ipKey ? [emailKey, ipKey] : [emailKey], at)) return { ok: false, reason: 'throttled' }
+    await this.store.purgeSessions(at) // expired rows would otherwise stay forever; the sessions_expires index makes this cheap
 
     const found = await this.store.findByEmail(email.trim())
     // An unknown email verifies against a fixed hash, so it costs the same single PBKDF2 run as a wrong password.
@@ -86,6 +87,7 @@ export class AuthService {
     if (!row || !await verifyPassword(current, this.pepper, row.passwordHash)) return 'wrong_current'
     await this.store.forgetFailure(key, at)
     if ([...next].length < MIN_PASSWORD) return 'too_short'
+    if (next === current) return 'same_password'
     await this.store.setPassword(user.id, await hashPassword(next, this.pepper), false)
     await this.store.deleteSessions(user.id, await sha256(token))
     return 'ok'

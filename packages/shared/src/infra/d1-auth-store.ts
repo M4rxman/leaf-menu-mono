@@ -84,6 +84,10 @@ export class D1AuthStore implements AuthStore {
     await this.db.run('DELETE FROM login_failures WHERE key = ?', key)
   }
 
+  async purgeSessions(before: number) {
+    await this.db.run('DELETE FROM sessions WHERE expires_at <= ?', before)
+  }
+
   async purgeFailures(before: number) {
     await this.db.run('DELETE FROM login_failures WHERE at <= ?', before)
   }
