@@ -67,14 +67,14 @@ test('login: unknown email takes about as long as a wrong password, with a fresh
     await new AuthService(store, PEPPER).login(email, 'wrong password', `10.0.0.${i}`) // own ip: stay under the throttle
     return performance.now() - t0
   }
-  const median = async (email, base) => {
+  const fastest = async (email, base) => {
     const ms = []
-    for (let i = 0; i < 5; i++) ms.push(await time(email, base + i))
-    return ms.sort((a, b) => a - b)[2]
+    for (let i = 0; i < 4; i++) ms.push(await time(email, base + i)) // + warm-up = 5 failures: the email throttle trips on the 6th
+    return Math.min(...ms) // fastest run: least scheduler noise
   }
   await time('admin@x.pt', 99) // warm up
-  const known = await median('admin@x.pt', 0)
-  const unknown = await median('ghost@x.pt', 10)
+  const known = await fastest('admin@x.pt', 0)
+  const unknown = await fastest('ghost@x.pt', 10)
   assert.ok(unknown / known > 0.7 && unknown / known < 1.3, `known ${known.toFixed(1)} ms, unknown ${unknown.toFixed(1)} ms`)
 })
 

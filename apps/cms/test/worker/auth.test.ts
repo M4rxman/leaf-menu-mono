@@ -199,3 +199,63 @@ describe('POST /auth/password', () => {
     expect(res.status).toBe(403)
   })
 })
+
+describe('hostile input', () => {
+  test('case and whitespace variants of one email share one throttle budget', async () => {
+    for (const email of ['ADMIN@x.pt', ' admin@x.pt', 'Admin@X.pt ', 'admin@X.PT', ' ADMIN@x.pt ']) {
+      expect((await login(email, 'wrong password')).status).toBe(401)
+    }
+    expect((await login('admin@x.PT ')).status).toBe(429)
+  })
+
+  test('SQL in the email is just a wrong email: 401, users untouched', async () => {
+    for (const email of ["' OR 1=1 --", "admin@x.pt'; DROP TABLE users; --", "x' UNION SELECT password_hash FROM users --"]) {
+      expect((await login(email, PASSWORD)).status).toBe(401)
+    }
+    expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first<{ n: number }>())!.n).toBe(2)
+  })
+
+  test('Origin "null" (sandboxed iframe, file://) is refused like any foreign origin', async () => {
+    expect((await call('/auth/login', { method: 'POST', origin: 'null', body: { email: 'admin@x.pt', password: PASSWORD } })).status).toBe(403)
+  })
+
+  test('a cross-origin logout is refused and the session survives', async () => {
+    const cookie = await signIn()
+    expect((await call('/auth/logout', { method: 'POST', cookie, origin: 'https://evil.example' })).status).toBe(403)
+    expect((await call('/auth/me', { cookie })).status).toBe(200)
+  })
+
+  test('only the __Host- cookie counts: the same token under another name is ignored', async () => {
+    const cookie = await signIn()
+    expect((await call('/auth/me', { cookie: cookie.replace('__Host-session', 'session') })).status).toBe(401)
+  })
+
+  test('a session token is never accepted back after logout, and each login gets a new one', async () => {
+    const first = await signIn()
+    const second = await signIn()
+    expect(second).not.toBe(first)
+    await call('/auth/logout', { method: 'POST', cookie: first })
+    expect((await call('/auth/me', { cookie: first })).status).toBe(401)
+    expect((await call('/auth/me', { cookie: second })).status).toBe(200)
+  })
+
+  test.each([
+    ['a non-string new password', { current: PASSWORD, next: 123456789012 }],
+    ['an array', { current: PASSWORD, next: ['a-brand-new-password'] }],
+    ['a 1001-character new password', { current: PASSWORD, next: 'x'.repeat(1001) }]
+  ])('password change with %s -> 400 and nothing changes', async (_, body) => {
+    const cookie = await signIn('owner@x.pt')
+    const res = await call('/auth/password', { method: 'POST', cookie, body })
+    expect(res.status).toBe(400)
+    expect(await errorCode(res)).toBe('validation_failed')
+    expect((await login('owner@x.pt')).status).toBe(204)
+  })
+
+  test('passwords are not trimmed or normalised: spaces and non-Latin text round-trip exactly', async () => {
+    const cookie = await signIn('owner@x.pt')
+    const next = '  пароль 密码 🔑 with spaces  '
+    expect((await call('/auth/password', { method: 'POST', cookie, body: { current: PASSWORD, next } })).status).toBe(204)
+    expect((await login('owner@x.pt', next)).status).toBe(204)
+    expect((await login('owner@x.pt', next.trim())).status).toBe(401)
+  })
+})
