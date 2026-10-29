@@ -410,6 +410,14 @@ Photos are served from `GET /img/{photoKey}` (Worker reads R2, `Cache-Control: p
 | Worker CPU, `GET /api/r/{slug}/likes` (one extra call per menu view) | p95 ≤ 5 ms | Same dashboard. It is what keeps the menu HTML identical for every visitor, so the HTML can be cached later. |
 | Largest Contentful Paint on a mid-range phone, 4G | ≤ 2.5 s | Lighthouse CI on staging |
 
+Image rules (guest menu):
+- Dish images always carry fixed `width`/`height` (80x80 box, `object-cover`), so they never shift the layout.
+- First screen (the first 6 dishes): `loading="eager"`, and the first image also `fetchpriority="high"`. All others: `loading="lazy" decoding="async"`.
+- No skeleton loaders; dishes stay in the server HTML.
+- Never `user-scalable=no` / `maximum-scale` in the viewport meta (accessibility).
+- Every page has its own `<title>`, meta description and, when a photo exists, `og:image`.
+- `GET /img/{photoKey}` is `Cache-Control: public, max-age=31536000, immutable` and sets no cookie (keys are random per upload).
+
 Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes above 10 ms, cache the rendered HTML per `slug + lang` in the Workers Cache API for 60 s and purge that venue's keys on every CMS save. Because the HTML is identical for every visitor, this needs no redesign.
 
 ## 11. Data safety
