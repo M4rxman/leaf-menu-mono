@@ -70,7 +70,7 @@ jobs:
       - name: E2E tests (built worker, real browser, throw-away local D1)
         run: npm run test:e2e:only -w @chilly/web
 
-      - name: Lighthouse gate (median of 5 mobile runs: CLS <= 0.1, LCP <= 2500 ms)
+      - name: Lighthouse gate (median of 5 mobile runs; CLS <= 0.1, LCP <= 2500 ms)
         working-directory: apps/web
         run: |
           node e2e/serve.mjs > serve.log 2>&1 &
