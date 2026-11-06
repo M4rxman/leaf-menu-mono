@@ -2,10 +2,10 @@ name = "chilly-menu"
 main = ".output/server/index.mjs"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
-# Staging host; the zone must be on this Cloudflare account. custom_domain creates the DNS record + certificate.
-routes = [{ pattern = "staging.chillymenu.party", custom_domain = true }]
 assets = { directory = ".output/public", binding = "ASSETS" }
 
+# Top level = local `wrangler dev` / `db:*` scripts only (no routes). Deploys always pass --env: bindings are NOT
+# inherited by [env.*], so each env redeclares its own D1/R2 and production can never touch staging data.
 [[d1_databases]]
 binding = "DB"
 database_name = "chilly-menu-eu"
@@ -16,3 +16,31 @@ migrations_dir = "../../packages/shared/migrations"
 binding = "PHOTOS"
 bucket_name = "chilly-photos-staging"
 
+# --- staging: staging.chillymenu.party. The zone must be on this Cloudflare account; custom_domain creates DNS + cert.
+[env.staging]
+name = "chilly-menu" # keep the existing Worker name (the default would be chilly-menu-staging = a new Worker)
+routes = [{ pattern = "staging.chillymenu.party", custom_domain = true }]
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "chilly-menu-eu"
+database_id = "8e739f6a-6caf-4115-a370-71b680aeef3b"
+migrations_dir = "../../packages/shared/migrations"
+
+[[env.staging.r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "chilly-photos-staging"
+
+# --- production: Worker `chilly-menu-production`. Create the resources once (see deploy.yml header), then paste the id.
+[env.production]
+routes = [{ pattern = "chillymenu.party", custom_domain = true }]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "chilly-menu-prod-eu"
+database_id = "REPLACE_WITH_PRODUCTION_D1_ID"
+migrations_dir = "../../packages/shared/migrations"
+
+[[env.production.r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "chilly-photos-production"
