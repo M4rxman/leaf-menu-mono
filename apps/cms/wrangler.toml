@@ -2,20 +2,48 @@ name = "chilly-cms"
 main = ".output/server/index.mjs"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
-# Path route on the same host as web: more specific than web's custom domain, so /admin/* (pages and /admin/api) hits this Worker.
-routes = [{ pattern = "staging.chillymenu.party/admin/*", zone_name = "chillymenu.party" }]
 assets = { directory = ".output/public", binding = "ASSETS" }
 
-# Same database and bucket as apps/web (one D1, one R2 for all venues).
+# Same layout as apps/web/wrangler.toml: top level = local dev only, deploys pass --env, bindings redeclared per env.
+# Keep the ids in sync with apps/web (one D1, one R2 per environment, shared by both Workers).
 [[d1_databases]]
 binding = "DB"
 database_name = "chilly-menu-eu"
 database_id = "8e739f6a-6caf-4115-a370-71b680aeef3b"
 migrations_dir = "../../packages/shared/migrations"
 
-# Secret (wrangler secret put PASSWORD_PEPPER; local: apps/cms/.dev.vars): PASSWORD_PEPPER. Keep a copy in the
-# password manager: without it no stored password verifies (an admin reset still works).
-
 [[r2_buckets]]
 binding = "PHOTOS"
 bucket_name = "chilly-photos-staging"
+
+# Secret per env (wrangler secret put PASSWORD_PEPPER --env <env>; local: apps/cms/.dev.vars): PASSWORD_PEPPER. Keep a
+# copy in the password manager: without it no stored password verifies (an admin reset still works).
+
+# --- staging. Path route on the same host as web: more specific than web's custom domain, so /admin/* hits this Worker.
+[env.staging]
+name = "chilly-cms" # keep the existing Worker name
+routes = [{ pattern = "staging.chillymenu.party/admin/*", zone_name = "chillymenu.party" }]
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "chilly-menu-eu"
+database_id = "8e739f6a-6caf-4115-a370-71b680aeef3b"
+migrations_dir = "../../packages/shared/migrations"
+
+[[env.staging.r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "chilly-photos-staging"
+
+# --- production: Worker `chilly-cms-production`.
+[env.production]
+routes = [{ pattern = "chillymenu.party/admin/*", zone_name = "chillymenu.party" }]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "chilly-menu-prod-eu"
+database_id = "REPLACE_WITH_PRODUCTION_D1_ID"
+migrations_dir = "../../packages/shared/migrations"
+
+[[env.production.r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "chilly-photos-production"
