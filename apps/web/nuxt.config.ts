@@ -17,6 +17,7 @@ export default defineNuxtConfig({
     strategy: 'no_prefix' // venue language lives in /r/{slug}/{lang}, handled by our own routes
   },
   routeRules: {
+    '/**': { headers: { 'X-Robots-Tag': 'noindex, nofollow' } }, // development: nothing gets indexed
     '/': { prerender: true },
     '/pt': { prerender: true }, // landing costs no Worker CPU
     '/r/**': { noScripts: true } // guest menu is plain SSR HTML, no hydration (plan Â§4)

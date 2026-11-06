@@ -432,8 +432,8 @@ Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes abov
 | Environment | Worker | D1 | R2 | Deploys on |
 |---|---|---|---|---|
 | local | `nuxt dev` + `wrangler` proxy | local D1 file | local | |
-| staging | `chilly-menu-staging` | `chilly-staging` | `chilly-photos-staging` | push to `main` |
-| production | `chilly-menu` | `chilly-prod` | `chilly-photos` | git tag `v*` (manual) |
+| staging | `chilly-menu` (web), `chilly-cms` | `chilly-menu-eu` | `chilly-photos-staging` | push to `main`, once CI is green |
+| production | `chilly-menu-production` (web), `chilly-cms-production` | `chilly-menu-prod-eu` | `chilly-photos-production` | git tag `v*` or manual dispatch; needs a green staging deploy of the same commit and `production` Environment approval |
 
 **Secrets** (`wrangler secret put`): `DEVICE_SECRET`, `SESSION_PEPPER`. **Bindings** in `wrangler.toml`: `DB`, `PHOTOS`, `LOGIN_LIMITER`, Cron `0 3 * * *` (nightly task). Never commit secrets; `.dev.vars` is git-ignored.
 
