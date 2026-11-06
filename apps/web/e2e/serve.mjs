@@ -19,6 +19,9 @@ const local = ['--local', '--persist-to', state]
 runSync(['d1', 'migrations', 'apply', 'DB', ...local])
 runSync(['d1', 'execute', 'DB', ...local, '--file', '../../packages/shared/seed.sql'])
 runSync(['d1', 'execute', 'DB', ...local, '--file', 'e2e/rtl-venue.sql'])
+runSync(['d1', 'execute', 'DB', ...local, '--file', 'e2e/big-venue.sql'])
+// All photo dishes in big-venue.sql share one key, so one upload.
+runSync(['r2', 'object', 'put', 'chilly-photos-staging/r/3/dishes/shared/test', ...local, '--file', 'e2e/test-photo.png', '--content-type', 'image/png'])
 
 const server = run(['dev', '--port', PORT, '--persist-to', state, '--var', 'DEVICE_SECRET:e2e-device-secret'])
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => server.kill(sig))

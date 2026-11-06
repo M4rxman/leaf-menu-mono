@@ -2,6 +2,7 @@
 declare namespace Cloudflare {
   interface Env {
     DB: D1Database
+    PHOTOS: R2Bucket
     DEVICE_SECRET: string
     TEST_MIGRATIONS: import('@cloudflare/vitest-plugin').D1Migration[]
   }

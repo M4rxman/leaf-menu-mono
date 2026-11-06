@@ -410,6 +410,14 @@ Photos are served from `GET /img/{photoKey}` (Worker reads R2, `Cache-Control: p
 | Worker CPU, `GET /api/r/{slug}/likes` (one extra call per menu view) | p95 ≤ 5 ms | Same dashboard. It is what keeps the menu HTML identical for every visitor, so the HTML can be cached later. |
 | Largest Contentful Paint on a mid-range phone, 4G | ≤ 2.5 s | Lighthouse CI on staging |
 
+Image rules (guest menu):
+- Dish images always carry fixed `width`/`height` (80x80 box, `object-cover`), so they never shift the layout.
+- First screen (the first 6 dishes): `loading="eager"`, and the first image also `fetchpriority="high"`. All others: `loading="lazy" decoding="async"`.
+- No skeleton loaders; dishes stay in the server HTML.
+- Never `user-scalable=no` / `maximum-scale` in the viewport meta (accessibility).
+- Every page has its own `<title>`, meta description and, when a photo exists, `og:image`.
+- `GET /img/{photoKey}` is `Cache-Control: public, max-age=31536000, immutable` and sets no cookie (keys are random per upload).
+
 Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes above 10 ms, cache the rendered HTML per `slug + lang` in the Workers Cache API for 60 s and purge that venue's keys on every CMS save. Because the HTML is identical for every visitor, this needs no redesign.
 
 ## 11. Data safety
@@ -424,8 +432,8 @@ Caching: none at launch (D1 reads in `weur` are fast). If menu CPU p95 goes abov
 | Environment | Worker | D1 | R2 | Deploys on |
 |---|---|---|---|---|
 | local | `nuxt dev` + `wrangler` proxy | local D1 file | local | |
-| staging | `chilly-menu-staging` | `chilly-staging` | `chilly-photos-staging` | push to `main` |
-| production | `chilly-menu` | `chilly-prod` | `chilly-photos` | git tag `v*` (manual) |
+| staging | `chilly-menu` (web), `chilly-cms` | `chilly-menu-eu` | `chilly-photos-staging` | push to `main`, once CI is green |
+| production | `chilly-menu-production` (web), `chilly-cms-production` | `chilly-menu-prod-eu` | `chilly-photos-production` | git tag `v*` or manual dispatch; needs a green staging deploy of the same commit and `production` Environment approval |
 
 **Secrets** (`wrangler secret put`): `DEVICE_SECRET`, `SESSION_PEPPER`. **Bindings** in `wrangler.toml`: `DB`, `PHOTOS`, `LOGIN_LIMITER`, Cron `0 3 * * *` (nightly task). Never commit secrets; `.dev.vars` is git-ignored.
 

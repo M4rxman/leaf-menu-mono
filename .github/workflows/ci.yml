@@ -70,6 +70,14 @@ jobs:
       - name: E2E tests (built worker, real browser, throw-away local D1)
         run: npm run test:e2e:only -w @chilly/web
 
+      - name: Lighthouse gate (median of 5 mobile runs; CLS <= 0.1, LCP <= 2500 ms)
+        working-directory: apps/web
+        run: |
+          node e2e/serve.mjs > serve.log 2>&1 &
+          trap 'kill $!' EXIT
+          curl -fs --retry 60 --retry-delay 2 --retry-connrefused -o /dev/null http://localhost:8799/r/big/en || { cat serve.log; exit 1; }
+          node e2e/lighthouse-gate.mjs http://localhost:8799/r/big/en 5
+
       - name: Upload e2e report
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

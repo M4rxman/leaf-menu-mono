@@ -277,3 +277,8 @@ describe('hostile input', () => {
     expect((await login('owner@x.pt', next.trim())).status).toBe(401)
   })
 })
+
+test('every CMS response is marked noindex, nofollow', async () => {
+  for (const path of ['/admin/', '/admin/login', '/admin/api/auth/me'])
+    expect((await exports.default.fetch(ORIGIN + path, { redirect: 'manual' })).headers.get('x-robots-tag')).toBe('noindex, nofollow')
+})
