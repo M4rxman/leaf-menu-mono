@@ -111,6 +111,7 @@ test('throttle: 5 requests per email per window, then refused; the window slides
   const { auth, advance } = await setup()
   for (let i = 0; i < 5; i++) assert.notEqual(await auth.requestReset('owner@x.pt', `7.7.7.${i}`), 'throttled')
   assert.equal(await auth.requestReset('OWNER@x.pt', '7.7.7.9'), 'throttled') // case does not dodge it
+  assert.equal(await auth.requestReset('  owner@x.pt 	', '7.7.7.9'), 'throttled') // nor does padding
   assert.equal(await auth.requestReset('ghost@x.pt', '7.7.7.9'), null) // another email is not blocked
   advance(15 * 60 + 1)
   assert.notEqual(await auth.requestReset('owner@x.pt', '7.7.7.9'), 'throttled')
@@ -136,4 +137,40 @@ test('expired links are purged on the next request', async () => {
   advance(RESET_SECONDS + 1)
   assert.equal(await auth.requestReset('ghost@x.pt', '1.1.1.2'), null) // unknown path purges too
   assert.equal(rows(sqlite).length, 0)
+})
+
+test('no client address (never on Workers): requests are not blocked by a shared empty key', async () => {
+  const { auth } = await setup()
+  for (let i = 0; i < 4; i++) assert.equal(await auth.requestReset(`ghost${i}@x.pt`, ''), null)
+  for (let i = 0; i < 4; i++) assert.equal(await auth.requestReset(`ghost${i + 4}@x.pt`, ''), null) // 8 > 5 on one key would throttle
+  const { token } = await auth.requestReset('owner@x.pt', '')
+  for (let i = 0; i < 8; i++) assert.deepEqual(await auth.resetPassword('nope', NEW, ''), { ok: false, reason: 'invalid' })
+  assert.ok((await auth.resetPassword(token, NEW, '')).ok)
+})
+
+test('throttle: a successful reset gives its attempt back to the IP budget', async () => {
+  const { auth } = await setup()
+  const { token } = await auth.requestReset('owner@x.pt', '1.1.1.1')
+  for (let i = 0; i < 4; i++) await auth.resetPassword('nope', NEW, '5.5.5.5')
+  assert.ok((await auth.resetPassword(token, NEW, '5.5.5.5')).ok)
+  assert.deepEqual(await auth.resetPassword('nope', NEW, '5.5.5.5'), { ok: false, reason: 'invalid' }) // 5th, not 6th
+})
+
+test('reset: a link whose user vanished is refused as invalid and changes nothing', async () => {
+  const calls = []
+  const store = {
+    purgeFailures: async () => {},
+    recordFailure: async () => {},
+    failureCount: async () => 0,
+    consumeReset: async () => 7,
+    findById: async () => null,
+    setPassword: async () => calls.push('setPassword'),
+    deleteSessions: async () => calls.push('deleteSessions')
+  }
+  const auth = new AuthService(store, PEPPER, () => 1)
+  assert.deepEqual(await auth.resetPassword('t', NEW, '1.1.1.1'), { ok: false, reason: 'invalid' })
+  assert.deepEqual(calls, [])
+  store.consumeReset = async () => null
+  store.findById = async () => assert.fail('must not look up a user for an unknown link')
+  assert.deepEqual(await auth.resetPassword('t', NEW, '1.1.1.1'), { ok: false, reason: 'invalid' })
 })
