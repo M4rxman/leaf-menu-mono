@@ -6,6 +6,7 @@ const SESSION_SECONDS = 14 * 86400 // sliding (plan §9)
 const EXTEND_AFTER = 86400 // write the new expiry at most once a day
 const MAX_FAILURES = 5
 const FAILURE_WINDOW = 15 * 60
+export const RESET_SECONDS = 30 * 60 // reset links live 30 minutes (OWASP: short, ASVS 2.5.x)
 
 const toHex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
 const sha256 = async (s: string) => toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))
@@ -15,6 +16,10 @@ const newToken = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Ui
 export type LoginResult =
   | { ok: true, token: string, maxAge: number, user: AuthUser }
   | { ok: false, reason: 'invalid' | 'throttled' }
+
+/** `null` = nothing to send (unknown email); the caller must answer exactly as for a known one. */
+export type ResetRequest = { token: string, email: string } | 'throttled' | null
+export type ResetResult = { ok: true, email: string } | { ok: false, reason: 'invalid' | 'too_short' | 'throttled' }
 
 export type PasswordResult = 'ok' | 'wrong_current' | 'too_short' | 'same_password' | 'throttled'
 
@@ -91,5 +96,45 @@ export class AuthService {
     await this.store.setPassword(user.id, await hashPassword(next, this.pepper), false)
     await this.store.deleteSessions(user.id, await sha256(token))
     return 'ok'
+  }
+
+  /**
+   * Starts a reset. Throttled per email and per IP (own keys, so it never locks a login). A known and an unknown
+   * email both do one hash and one write, and the mail itself is sent by the caller after the response.
+   */
+  async requestReset(email: string, ip: string): Promise<ResetRequest> {
+    const at = this.now()
+    const norm = email.trim().toLowerCase()
+    const keys = [`reset:email:${norm}`, ...(ip ? [`reset:ip:${ip}`] : [])]
+    if (await this.overLimit(keys, at)) return 'throttled'
+    const found = await this.store.findByEmail(email.trim())
+    const token = newToken()
+    const hash = await sha256(token)
+    if (!found) {
+      await this.store.purgeResets(at) // a write of the same shape as createReset
+      return null
+    }
+    await this.store.createReset(hash, found.id, at + RESET_SECONDS)
+    return { token, email: found.email }
+  }
+
+  /**
+   * Sets a new password from a link. The user comes from the stored link only. A too-short password is refused
+   * before the link is consumed, so a typo does not burn it. Every session of the user ends; a lockout is lifted.
+   */
+  async resetPassword(token: string, next: string, ip: string): Promise<ResetResult> {
+    const at = this.now()
+    const ipKey = ip ? `resettry:ip:${ip}` : null
+    if (ipKey && await this.overLimit([ipKey], at)) return { ok: false, reason: 'throttled' }
+    if ([...next].length < MIN_PASSWORD) return { ok: false, reason: 'too_short' }
+    const userId = await this.store.consumeReset(await sha256(token), at)
+    if (userId === null) return { ok: false, reason: 'invalid' }
+    const user = await this.store.findById(userId)
+    if (!user) return { ok: false, reason: 'invalid' }
+    await this.store.setPassword(userId, await hashPassword(next, this.pepper), false)
+    await this.store.deleteSessions(userId)
+    await this.store.clearFailures(`email:${user.email.toLowerCase()}`)
+    if (ipKey) await this.store.forgetFailure(ipKey, at)
+    return { ok: true, email: user.email }
   }
 }

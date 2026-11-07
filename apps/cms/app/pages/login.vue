@@ -37,10 +37,16 @@ async function submit() {
       <UFormField label="Password" name="password">
         <UInput v-model="state.password" type="password" autocomplete="current-password" required class="w-full" />
       </UFormField>
+      <UAlert v-if="useRoute().query.reset" color="success" variant="subtle" role="status" description="Password changed. Sign in with the new one." />
       <UAlert v-if="error" color="error" variant="subtle" :description="error" role="alert" />
       <UButton type="submit" block :loading="busy">
         Sign in
       </UButton>
+      <p class="text-center text-sm">
+        <ULink to="/forgot">
+          Forgot your password?
+        </ULink>
+      </p>
     </UForm>
   </UCard>
 </template>

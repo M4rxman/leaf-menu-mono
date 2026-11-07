@@ -16,6 +16,13 @@ migrations_dir = "../../packages/shared/migrations"
 binding = "PHOTOS"
 bucket_name = "chilly-photos-staging"
 
+# Mail for password reset. Vars are not inherited by envs, so each env sets its own. PUBLIC_BASE_URL is the origin used in
+# reset links (never taken from the Host header). Sending also needs a `send_email` binding named EMAIL and MAIL_FROM on a
+# domain onboarded to Cloudflare Email Service; until then the reset request logs "mail is not configured" and sends nothing.
+[vars]
+PUBLIC_BASE_URL = "http://localhost:8788"
+MAIL_LOG = "1" # local only: print the mail instead of sending it
+
 # Secret per env (wrangler secret put PASSWORD_PEPPER --env <env>; local: apps/cms/.dev.vars): PASSWORD_PEPPER. Keep a
 # copy in the password manager: without it no stored password verifies (an admin reset still works).
 
@@ -23,6 +30,9 @@ bucket_name = "chilly-photos-staging"
 [env.staging]
 name = "chilly-cms" # keep the existing Worker name
 routes = [{ pattern = "staging.chillymenu.party/admin/*", zone_name = "chillymenu.party" }]
+
+[env.staging.vars]
+PUBLIC_BASE_URL = "https://staging.chillymenu.party"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -37,6 +47,9 @@ bucket_name = "chilly-photos-staging"
 # --- production: Worker `chilly-cms-production`.
 [env.production]
 routes = [{ pattern = "chillymenu.party/admin/*", zone_name = "chillymenu.party" }]
+
+[env.production.vars]
+PUBLIC_BASE_URL = "https://chillymenu.party"
 
 [[env.production.d1_databases]]
 binding = "DB"

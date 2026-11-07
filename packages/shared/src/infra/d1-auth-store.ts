@@ -91,4 +91,22 @@ export class D1AuthStore implements AuthStore {
   async purgeFailures(before: number) {
     await this.db.run('DELETE FROM login_failures WHERE at <= ?', before)
   }
+
+  async createReset(tokenHash: string, userId: number, expiresAt: number) {
+    await this.db.run(
+      `INSERT INTO password_resets (user_id, token_hash, expires_at, used) VALUES (?, ?, ?, 0)
+       ON CONFLICT(user_id) DO UPDATE SET token_hash = excluded.token_hash, expires_at = excluded.expires_at, used = 0`,
+      userId, tokenHash, expiresAt)
+  }
+
+  async consumeReset(tokenHash: string, now: number) {
+    const r = await this.db.first<{ user_id: number }>(
+      'UPDATE password_resets SET used = 1 WHERE token_hash = ? AND used = 0 AND expires_at > ? RETURNING user_id',
+      tokenHash, now)
+    return r?.user_id ?? null
+  }
+
+  async purgeResets(before: number) {
+    await this.db.run('DELETE FROM password_resets WHERE expires_at <= ?', before)
+  }
 }

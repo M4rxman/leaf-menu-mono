@@ -59,6 +59,17 @@ export interface AuthStore {
   /** Deletes sessions that expired at or before `before` (unix seconds). */
   purgeSessions(before: number): Promise<void>
   purgeFailures(before: number): Promise<void>
+  /** Stores the hash of a reset token for the user, replacing (superseding) any earlier link. */
+  createReset(tokenHash: string, userId: number, expiresAt: number): Promise<void>
+  /** Marks an unused, unexpired link used and returns its user id; null otherwise. One atomic statement, so a link works once even in parallel. */
+  consumeReset(tokenHash: string, now: number): Promise<number | null>
+  /** Deletes links that expired at or before `before`. */
+  purgeResets(before: number): Promise<void>
+}
+
+/** Sends plain-text mail. Implementations must not throw secrets into logs. */
+export interface Mailer {
+  send(message: { to: string, subject: string, text: string }): Promise<void>
 }
 
 /** True if the caller may proceed: at most `limit` calls per key per minute. */

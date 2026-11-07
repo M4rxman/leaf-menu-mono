@@ -21,6 +21,7 @@ beforeEach(async () => {
     env.DB.prepare('DELETE FROM restaurants'),
     env.DB.prepare('DELETE FROM users'),
     env.DB.prepare('DELETE FROM login_failures'),
+    env.DB.prepare('DELETE FROM password_resets'),
     ...seed.map(s => env.DB.prepare(s)),
     env.DB.prepare("INSERT INTO users (id, email, password_hash, role) VALUES (1, 'admin@x.pt', ?, 'admin')").bind(hash),
     env.DB.prepare("INSERT INTO users (id, email, password_hash, role, restaurant_id, must_change_password) VALUES (2, 'owner@x.pt', ?, 'owner', 1, 1)").bind(hash)
