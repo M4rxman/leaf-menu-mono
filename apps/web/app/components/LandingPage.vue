@@ -34,7 +34,7 @@ const button = 'min-h-11 inline-flex items-center rounded-card px-5 font-semibol
           {{ c.heroText }}
         </p>
         <div class="mt-6 flex flex-wrap gap-3">
-          <NuxtLink to="/r/demo" :class="[button, 'bg-brand text-white']">
+          <NuxtLink to="/r/demo" external :class="[button, 'bg-brand text-white']">
             {{ c.seeDemo }}
           </NuxtLink>
           <a :href="mailto" :class="[button, 'border border-ink/20']">{{ c.getMenu }}</a>
@@ -86,7 +86,7 @@ const button = 'min-h-11 inline-flex items-center rounded-card px-5 font-semibol
         <p class="mt-2 text-ink/80">
           {{ c.demoText }}
         </p>
-        <NuxtLink to="/r/demo" :class="[button, 'mt-4 bg-brand text-white']">
+        <NuxtLink to="/r/demo" external :class="[button, 'mt-4 bg-brand text-white']">
           {{ c.seeDemo }}
         </NuxtLink>
       </section>

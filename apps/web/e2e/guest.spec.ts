@@ -18,6 +18,21 @@ test('scan: the permanent QR link lands on the menu in the guest language', asyn
   await expect(page.getByRole('heading', { level: 2 })).toHaveCount(7) // seven categories
 })
 
+// /r/{slug} is a server redirect, not a Vue page: a client-side NuxtLink would flash the 404 page first.
+test('landing: "See a live menu" goes to the menu without ever showing the 404 page', async ({ page }) => {
+  // sessionStorage survives the full reload that follows the flash
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      if (document.body?.innerText.includes('Page not found')) sessionStorage.setItem('saw404', '1')
+    }).observe(document, { childList: true, subtree: true, characterData: true })
+  })
+  await page.goto('/')
+  await page.getByRole('link', { name: 'See a live menu' }).first().click()
+  await page.waitForURL(/\/r\/demo\/(pt|en)$/)
+  await page.waitForTimeout(500)
+  expect(await page.evaluate(() => sessionStorage.getItem('saw404'))).toBeNull()
+})
+
 test.describe('English browser', () => {
   test.use({ locale: 'en-GB' })
   test('/r/demo goes to the English menu', async ({ page }) => {
