@@ -13,6 +13,8 @@ export interface MenuReader {
   getMenu(slug: string): Promise<RawMenu | null>
   /** Current slug for a renamed one, from slug_history. */
   currentSlugFor(oldSlug: string): Promise<string | null>
+  /** Current slug of the venue that owns a printed QR code (the code never changes, the slug can). */
+  slugForQr(code: string): Promise<string | null>
 }
 
 /** Guest likes. A device is anonymous: the id only ever comes from the signed cookie. */
