@@ -42,6 +42,12 @@ export class D1MenuReader implements MenuReader {
     return row?.slug ?? null
   }
 
+  async slugForQr(code: string): Promise<string | null> {
+    const row = await this.db.first<{ slug: string }>(
+      'SELECT slug FROM restaurants WHERE qr_code = ? AND deleted_at IS NULL', code)
+    return row?.slug ?? null
+  }
+
   async getMenu(slug: string): Promise<RawMenu | null> {
     const r = await this.db.first<Row>(
       'SELECT id, slug, default_lang, currency, info_json FROM restaurants WHERE slug = ? AND deleted_at IS NULL', slug)

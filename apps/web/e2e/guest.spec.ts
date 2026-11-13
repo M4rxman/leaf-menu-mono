@@ -10,8 +10,7 @@ const dish = (page: Page, id: number) => ({
 })
 const countOf = async (page: Page, id: number) => Number(await dish(page, id).count.textContent())
 
-// fixme: GET /q/{code} is not implemented yet (issue #18). Remove the fixme in the PR that adds it.
-test.fixme('scan: the permanent QR link lands on the menu in the guest language', async ({ page }) => {
+test('scan: the permanent QR link lands on the menu in the guest language', async ({ page }) => {
   await page.goto('/q/cs7k2m')
   await expect(page).toHaveURL(/\/r\/demo\/pt$/)
   await expect(page.locator('html')).toHaveAttribute('lang', 'pt')
