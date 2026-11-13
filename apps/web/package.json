@@ -13,6 +13,7 @@
         "test:worker:only": "vitest run",
         "test:e2e": "nuxt build && playwright test",
         "test:e2e:only": "playwright test",
+        "check:size": "node scripts/check-bundle-size.mjs",
         "postinstall": "nuxt prepare",
         "lint": "eslint .",
         "typecheck": "nuxt typecheck && tsc --noEmit -p test/worker/tsconfig.json && tsc --noEmit -p e2e/tsconfig.json"
