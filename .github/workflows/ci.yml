@@ -64,6 +64,9 @@ jobs:
       - name: Build
         run: npm run build -w @chilly/web
 
+      - name: Bundle size (guest menu.js <= 5 KB gzipped)
+        run: npm run check:size -w @chilly/web
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
