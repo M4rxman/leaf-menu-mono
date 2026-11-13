@@ -1,2 +1,8 @@
-User-Agent: *
-Disallow:
+# Development: keep every crawler out, except Anthropic's.
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: *
+Disallow: /

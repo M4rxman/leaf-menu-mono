@@ -18,11 +18,21 @@ const menu = computed(() => (data.value?.kind === 'ok' ? data.value.menu : null)
 // Chrome language: the guest's language if we ship a file for it, else English (falls back on its own).
 if (menu.value) await useI18n().setLocale(uiLocale(menu.value.lang))
 
+// No restaurant hero photo exists yet, so no og:image.
+useSeoMeta({
+  description: () => menu.value?.about || (menu.value?.info as { tagline?: string } | undefined)?.tagline,
+  ogTitle: () => menu.value?.name,
+  ogDescription: () => menu.value?.about || (menu.value?.info as { tagline?: string } | undefined)?.tagline
+})
 useHead(() => ({
   htmlAttrs: { lang: menu.value?.lang, dir: menu.value?.dir },
   title: menu.value?.name,
   script: [{ src: '/menu.js', defer: true }] // hearts only; the page itself is not hydrated
 }))
+// The first 6 dishes are on the first screen: load them eagerly, the very first with high priority.
+const firstDishes = computed(() => (menu.value?.categories.flatMap(c => c.dishes) ?? []).slice(0, 6))
+const eagerIds = computed(() => new Set(firstDishes.value.map(d => d.id)))
+const firstId = computed(() => firstDishes.value[0]?.id)
 const info = computed(() => menu.value?.info as { address?: string, tagline?: string } | undefined)
 </script>
 
@@ -56,7 +66,7 @@ const info = computed(() => menu.value?.info as { address?: string, tagline?: st
         {{ c.name }}
       </h2>
       <div v-if="c.dishes.length" class="space-y-3">
-        <DishCard v-for="d in c.dishes" :key="d.id" :dish="d" :lang="menu.lang" />
+        <DishCard v-for="d in c.dishes" :key="d.id" :dish="d" :lang="menu.lang" :eager="eagerIds.has(d.id)" :first="d.id === firstId" />
       </div>
     </section>
   </main>

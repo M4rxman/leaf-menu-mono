@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import type { DishView } from '@chilly/shared/domain/types'
 
-defineProps<{ dish: DishView, lang: string, liked?: boolean }>()
+defineProps<{ dish: DishView, lang: string, liked?: boolean, eager?: boolean, first?: boolean }>()
 </script>
 
 <template>
   <article :id="`dish-${dish.id}`" class="scroll-mt-14 flex gap-3 rounded-card border border-ink/10 p-3" :class="{ 'opacity-60': dish.isSoldOut }">
+    <img
+      v-if="dish.photoKey"
+      :src="`/img/${dish.photoKey}`"
+      width="80"
+      height="80"
+      :alt="dish.photoAlt || dish.name"
+      :loading="eager ? 'eager' : 'lazy'"
+      :decoding="eager ? undefined : 'async'"
+      :fetchpriority="first ? 'high' : undefined"
+      class="size-20 shrink-0 rounded-card bg-ink/5 object-cover"
+    >
     <div
+      v-else
       class="flex size-20 shrink-0 items-center justify-center rounded-card bg-ink/5 text-ink/30"
       role="img"
-      :aria-label="dish.photoAlt || dish.name"
+      :aria-label="dish.name"
     >
       <Icon name="i-lucide-utensils" class="size-6" />
     </div>

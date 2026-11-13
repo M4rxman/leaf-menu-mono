@@ -7,9 +7,15 @@ import type { D1Like } from '@chilly/shared/infra/d1-db'
 import { D1LikeStore, D1RateLimiter } from '@chilly/shared/infra/d1-like-store'
 import { D1MenuReader } from '@chilly/shared/infra/d1-menu-reader'
 
+// The slice of R2Bucket we use (the Workers types are not loaded in the Nuxt server tsconfig).
+interface R2 {
+  get(key: string): Promise<{ body: ReadableStream, httpMetadata?: { contentType?: string } } | null>
+}
+
 interface Env {
   DB?: D1Like
   DEVICE_SECRET?: string
+  PHOTOS?: R2
 }
 
 // Composition root: the only place that knows about Cloudflare bindings.
@@ -32,3 +38,9 @@ export function deviceSecret(event: H3Event): string {
 }
 
 export const likeLimiter = (event: H3Event): RateLimiter => new D1RateLimiter(db(event))
+
+export function photos(event: H3Event): R2 {
+  const { PHOTOS } = env(event)
+  if (!PHOTOS) throw createError({ statusCode: 500, statusMessage: 'R2 binding PHOTOS is missing' })
+  return PHOTOS
+}

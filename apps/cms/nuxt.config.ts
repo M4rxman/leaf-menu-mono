@@ -9,6 +9,7 @@ export default defineNuxtConfig({
   ui: { fonts: false },
   icon: { serverBundle: 'local' },
   build: { transpile: ['@chilly/shared'] },
+  routeRules: { '/**': { headers: { 'X-Robots-Tag': 'noindex, nofollow' } } }, // owner area: never indexed
   nitro: {
     preset: 'cloudflare-module',
     cloudflareDev: { persistDir: '../../.wrangler/state' },
