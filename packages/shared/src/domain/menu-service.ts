@@ -13,6 +13,11 @@ export class MenuService {
     this.reader = reader
   }
 
+  /** /q/{code}: the venue's current slug, or null for an unknown code. */
+  slugForQr(code: string): Promise<string | null> {
+    return this.reader.slugForQr(code)
+  }
+
   /** /r/{slug}: pick the language from Accept-Language (enabled only), else the venue default. */
   async enter(slug: string, acceptLanguage: string | null | undefined): Promise<MenuResult> {
     const raw = await this.reader.getMenu(slug)
