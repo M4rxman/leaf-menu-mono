@@ -33,6 +33,14 @@ test('english view translates Bufalina only, the rest falls back to pt', async (
   assert.match(d.find(x => x.id === 8).description, /^Mortadela/)
 })
 
+test('slugForQr: the seeded code gives the current slug, also after a rename; unknown is null', async () => {
+  assert.equal(await reader.slugForQr('cs7k2m'), 'demo')
+  assert.equal(await reader.slugForQr('nope00'), null)
+  sqlite.exec("UPDATE restaurants SET slug = 'casa-nova' WHERE id = 1")
+  assert.equal(await reader.slugForQr('cs7k2m'), 'casa-nova')
+  sqlite.exec("UPDATE restaurants SET slug = 'demo' WHERE id = 1")
+})
+
 test('renamed slug redirects', async () => {
   sqlite.exec("INSERT INTO slug_history VALUES ('casa-old', 1)")
   assert.deepEqual(await service.getMenu('casa-old', 'pt'), { kind: 'redirect', slug: 'demo', lang: 'pt', permanent: true })
