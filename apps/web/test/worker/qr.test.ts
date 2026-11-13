@@ -16,3 +16,13 @@ test('unknown and malformed codes are 404', async () => {
     expect((await get(`/q/${code}`)).status, code).toBe(404)
   }
 })
+
+// Slug lookup is host-independent (CLAUDE.md), so a future custom domain
+// (venue_domains) can serve /q/{code} unchanged. Guards that: no host-based branching yet.
+test('the redirect is the same on any Host, with a relative Location', async () => {
+  for (const host of ['example.com', 'menu.casastrega.pt', 'demo.example.com']) {
+    const res = await exports.default.fetch(`https://${host}/q/cs7k2m`, { redirect: 'manual' })
+    expect(res.status, host).toBe(302)
+    expect(res.headers.get('location'), host).toBe('/r/demo')
+  }
+})
